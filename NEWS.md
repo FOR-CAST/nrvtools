@@ -1,3 +1,7 @@
+# nrvtools 0.0.2
+
+- add `calculatePatchMetrics()` and `calculatePatchMetricsSeral()`;
+
 # nrvtools 0.0.1
 
 - initial version;

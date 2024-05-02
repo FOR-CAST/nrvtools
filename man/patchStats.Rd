@@ -2,7 +2,7 @@
 % Please edit documentation in R/patch-stats.R
 \name{patchStats}
 \alias{patchStats}
-\title{Calculate patch statistics (metrics)}
+\title{Calculate patch statistics/metrics}
 \usage{
 patchStats(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 }
@@ -28,5 +28,5 @@ These functions must work analogously to those in \pkg{landscapemetrics}.}
 nested list of summary data.frames containing patch statistics by summary polygon
 }
 \description{
-Calculate patch statistics (metrics)
+Calculate patch statistics/metrics
 }

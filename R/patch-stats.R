@@ -1,5 +1,5 @@
 utils::globalVariables(c(
-  "class", "id", "layer", "level", "metric"
+  "class", "id", "layer", "level", "metric", "N", "poly", "sd",  "se", "time", "value"
 ))
 
 #' Calculate areas for each patch (per species)
@@ -72,7 +72,7 @@ patchAreasSeral <- function(ssm) {
   return(areas)
 }
 
-#' Calculate patch statistics (metrics)
+#' Calculate patch statistics/metrics
 #'
 #' @template vtm
 #'
@@ -175,4 +175,190 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
   names(byPoly) <- paste(tools::file_path_sans_ext(basename(ssm)), polyNames, sep = "_") ## seralStageMap_yearXXXX_polyName
 
   byPoly
+}
+
+#' Calculate patch statistics/metrics
+#'
+#' @template summaryPolys
+#'
+#' @template polyCol
+#'
+#' @template flm
+#'
+#' @template vtm
+#'
+#' @template sam
+#'
+#' @return summary `data.frame` object
+#'
+#' @export
+#' @seelaso [calculatePatchMetricsSeral()]
+calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam) {
+  if (!is(summaryPolys, "sf"))
+    summaryPolys <- sf::st_as_sf(summaryPolys)
+
+  polyNames <- unique(summaryPolys[[polyCol]])
+
+  funList <- list("patchAges", "patchAreas")
+  names(funList) <- funList
+
+  oldPlan <- future::plan() |>
+    future::tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
+    future::plan()
+  on.exit(plan(oldPlan), add = TRUE)
+
+  ptch_stats <- future.apply::future_mapply(
+    patchStats, vtm = vtm, sam = sam,
+    MoreArgs = list(
+      flm = flm,
+      polyCol = polyCol,
+      polyNames = polyNames,
+      summaryPolys = summaryPolys,
+      funList = funList
+    ),
+    SIMPLIFY = FALSE,
+    future.globals = funList,
+    future.packages = c("dplyr", "landscapemetrics", "sf", "terra")
+  )
+  names(ptch_stats) <- basename(dirname(vtm)) ## repXX
+
+  ptch_stats <- purrr::transpose(lapply(ptch_stats, purrr::transpose)) ## puts fun names as outer list elements
+
+  stopifnot(all(funList == names(ptch_stats)))
+
+  ptch_stat_df <- lapply(ptch_stats, function(x) {
+    x <- unlist(x, recursive = FALSE, use.names = TRUE)
+    labels <- purrr::transpose(strsplit(names(x), "[.]"))
+    labels1 <- unlist(labels[[1]])
+    labels2 <- gsub("vegTypeMap", "", unlist(labels[[2]]))
+    labels2a <- purrr::transpose(strsplit(labels2, "_"))
+    labels2a2 <- unlist(labels2a[[2]]) ## year
+    labels2a3 <- if (length(labels2a) == 3) {
+      unlist(labels2a[[3]]) ## subpoly
+    } else if (length(labels2a) == 4) {
+      paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
+    } else {
+      stop("polyName contains too many underscores")
+    }
+
+    vtmReps <- as.integer(gsub("rep", "", labels1))
+    vtmTimes <- as.integer(gsub("year", "", labels2a2))
+    vtmStudyAreas <- labels2a3
+
+    df <- do.call(rbind, lapply(seq_along(x), function(i) {
+      if (nrow(x[[i]]) == 0) {
+        x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
+                             id = integer(0), metric = character(0), value = numeric(0))
+
+      }
+      dplyr::mutate(x[[i]], rep = vtmReps[i], time = vtmTimes[i], poly = vtmStudyAreas[i]) |>
+        dplyr::group_by(class, time, poly, metric) |>
+        dplyr::summarise(
+          N = length(value),
+          mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
+          mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
+          mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
+          sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
+          se = ifelse(N > 0, sd / sqrt(N), NA_real_),
+          ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
+        )
+    }))
+
+    df
+  })
+  names(ptch_stat_df) <- funList
+
+  return(ptch_stat_df)
+}
+
+#' Calculate patch statistics/metrics
+#'
+#' @template summaryPolys
+#'
+#' @template polyCol
+#'
+#' @template flm
+#'
+#' @template ssm
+#'
+#' @return summary `data.frame` object
+#'
+#' @export
+#' @seelaso [calculatePatchMetrics()]
+calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
+  if (!is(summaryPolys, "sf"))
+    summaryPolys <- sf::st_as_sf(summaryPolys)
+
+  polyNames <- unique(summaryPolys[[polyCol]])
+
+  funList <- list("patchAreasSeral") ## patch ages don't make sense here since age determines patches
+  names(funList) <- funList
+
+  oldPlan <- future::plan() |>
+    future::tweak(workers = pemisc::optimalClusterNum(5000, length(ssm))) |>
+    future::plan()
+  on.exit(plan(oldPlan), add = TRUE)
+
+  ptch_stats <- future.apply::future_mapply(
+    patchStatsSeral, ssm = ssm,
+    MoreArgs = list(
+      flm = flm,
+      polyCol = polyCol,
+      polyNames = polyNames,
+      summaryPolys = summaryPolys,
+      funList = funList
+    ),
+    SIMPLIFY = FALSE,
+    future.globals = funList,
+    future.packages = c("dplyr", "landscapemetrics", "sf", "terra")
+  )
+  names(ptch_stats) <- basename(dirname(ssm)) ## repXX
+
+  ptch_stats <- purrr::transpose(lapply(ptch_stats, purrr::transpose)) ## puts fun names as outer list elements
+
+  stopifnot(all(funList == names(ptch_stats)))
+
+  ptch_stat_df <- lapply(ptch_stats, function(x) {
+    x <- unlist(x, recursive = FALSE, use.names = TRUE)
+    labels <- purrr::transpose(strsplit(names(x), "[.]"))
+    labels1 <- unlist(labels[[1]])
+    labels2 <- gsub("seralStageMap", "", unlist(labels[[2]]))
+    labels2a <- purrr::transpose(strsplit(labels2, "_"))
+    labels2a2 <- unlist(labels2a[[2]]) ## year
+    labels2a3 <- if (length(labels2a) == 3) {
+      unlist(labels2a[[3]]) ## subpoly
+    } else if (length(labels2a) == 4) {
+      paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
+    } else {
+      stop("polyName contains too many underscores")
+    }
+
+    ssmReps <- as.integer(gsub("rep", "", labels1))
+    ssmTimes <- as.integer(gsub("year", "", labels2a2))
+    ssmStudyAreas <- labels2a3
+
+    df <- do.call(rbind, lapply(seq_along(x), function(i) {
+      if (nrow(x[[i]]) == 0) {
+        x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
+                             id = integer(0), metric = character(0), value = numeric(0))
+
+      }
+      dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i]) |>
+        dplyr::group_by(class, time, poly, metric) |>
+        dplyr::summarise(
+          N = length(value),
+          mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
+          mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
+          mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
+          sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
+          se = ifelse(N > 0, sd / sqrt(N), NA_real_),
+          ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
+        )
+    }))
+
+    df
+  })
+  names(ptch_stat_df) <- funList
+
+  return(ptch_stat_df)
 }

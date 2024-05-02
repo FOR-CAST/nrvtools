@@ -8,6 +8,14 @@
 \description{
 Tools and utilities for working with outputs from NRV simulations.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/FOR-CAST/nrvtools}
+  \item Report bugs at \url{https://github.com/FOR-CAST/nrvtools/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Alex M Chubaty \email{achubaty@for-cast.ca} (\href{https://orcid.org/0000-0001-7146-8135}{ORCID})
 
