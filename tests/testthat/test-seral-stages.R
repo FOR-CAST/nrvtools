@@ -19,8 +19,8 @@ test_that("BC seral stage calculations work", {
   #   sf::st_cast("MULTIPOLYGON") |>
   #   sf::st_transform(targetCRS)
 
-  studyArea <- map::studyArea(ml, 3) ## ml[[grep("\\(studyArea\\)", names(ml), value = TRUE)]]
-  NDTBEC <- sf::st_crop(ml$`BEC zones`, studyArea) |>
+  studyArea3 <- map::studyArea(ml, 3) ## ml[[grep("\\(studyArea\\)", names(ml), value = TRUE)]]
+  NDTBEC <- sf::st_crop(ml$`BEC zones`, studyArea3) |>
     dplyr::mutate(NDTBEC = paste0(NATURAL_DISTURBANCE, "_", ZONE)) |>
     dplyr::group_by(NDTBEC) |>
     dplyr::summarise()

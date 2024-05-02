@@ -159,19 +159,25 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
                              (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB < 0.06), ]$newPixelGroup
   pgFir <- c(pgFir1, pgFir2, pgFir3, pgFir4) |> unique()
 
-  pgPine1 <- cohortDataNDT4[(speciesCode == "Pinu_con" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
-  pgPine1 <- cohortDataNDT4[(newPixelGroup %in% pgPine1) & (speciesCode == "Pinu_pon" & propB <= 0.15), ]$newPixelGroup
-  pgPine1 <- cohortDataNDT4[(newPixelGroup %in% pgPine1) & (speciesCode == "Pseu_men" & propB <= 0.15), ]$newPixelGroup
+  ## 2024-05-02 everything else not in fir group is in pine group; keep old code for now
+  pgPine <- cohortDataNDT4[!(newPixelGroup %in% pgFir), ]$newPixelGroup
 
-  pgPine2 <- cohortDataNDT4[(speciesCode == "Popu_tre" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
-  pgPine2 <- cohortDataNDT4[(newPixelGroup %in% pgPine2) &
-                              ((speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB <= 0.15) |
-                                 (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB >= 0.06)), ]$newPixelGroup
-  pgPine3 <- cohortDataNDT4[grepl("^Pice_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgPine4 <- cohortDataNDT4[grepl("^Thuj_pli", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgPine5 <- cohortDataNDT4[grepl("^Popu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgPine6 <- cohortDataNDT4[grepl("^Betu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgPine <- c(pgPine1, pgPine2, pgPine3, pgPine4, pgPine5, pgPine6)
+  if (FALSE) {
+    ## TODO: this does not catch all possible non-fir species combinations
+    pgPine1 <- cohortDataNDT4[(speciesCode == "Pinu_con" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
+    pgPine1 <- cohortDataNDT4[(newPixelGroup %in% pgPine1) & (speciesCode == "Pinu_pon" & propB <= 0.15), ]$newPixelGroup
+    pgPine1 <- cohortDataNDT4[(newPixelGroup %in% pgPine1) & (speciesCode == "Pseu_men" & propB <= 0.15), ]$newPixelGroup
+
+    pgPine2 <- cohortDataNDT4[(speciesCode == "Popu_tre" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
+    pgPine2 <- cohortDataNDT4[(newPixelGroup %in% pgPine2) &
+                                ((speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB <= 0.15) |
+                                   (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB >= 0.06)), ]$newPixelGroup
+    pgPine3 <- cohortDataNDT4[grepl("^Pice_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
+    pgPine4 <- cohortDataNDT4[grepl("^Thuj_pli", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
+    pgPine5 <- cohortDataNDT4[grepl("^Popu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
+    pgPine6 <- cohortDataNDT4[grepl("^Betu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
+    pgPine <- c(pgPine1, pgPine2, pgPine3, pgPine4, pgPine5, pgPine6)
+  }
 
   assertthat::assert_that(!any(pgFir %in% pgPine))
 
@@ -179,8 +185,6 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   ## keep track of them for now, but need to dive into these further (e.g., Pinu_alb leading)
   pgNDT4 <- unique(cohortDataNDT4[propB > 0, newPixelGroup])
   pgOther <- pgNDT4[!pgNDT4 %in% c(pgFir, pgPine)]
-  # TODO <- cohortDataNDT4[newPixelGroup %in% pgOther, ]
-  # TODO[newPixelGroup == 390, ] ## 539 18043 18303 18473 22428
 
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir, NDTBEC := paste0(NDTBEC, "_Fir")]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge < 40, SeralStage := "early"]
@@ -194,11 +198,16 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 140, SeralStage := "old"]
 
+  ## 'other' matches pine group seral stages
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther, NDTBEC := paste0(NDTBEC, "_Other")]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge < 40, SeralStage := "early"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 250, SeralStage := "mature"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 250, SeralStage := "old"]
+  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
+  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
+
+  if (NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0) {
+    cohortData2 <- cohortData2[!grepl("^NDT5_", NDTBEC) & !is.na(SeralStage) & !is.nan(propB), ]
+  }
 
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
 

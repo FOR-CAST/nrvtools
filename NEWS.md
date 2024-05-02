@@ -1,3 +1,7 @@
+# nrvtools 0.0.3
+
+- simplify seral stage classifications to put all non-fir into pine group for NDT4
+
 # nrvtools 0.0.2
 
 - add `calculatePatchMetrics()` and `calculatePatchMetricsSeral()`;
