@@ -206,7 +206,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
 
   ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omitted?
-  cohortData2[!grepl("^NDT5_", NDTBEC) & !is.na(SeralStage), SeralStage := "early"]
+  cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), SeralStage := "early"]
 
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
 
