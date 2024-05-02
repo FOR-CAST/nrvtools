@@ -205,10 +205,8 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
 
-  if (NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0) {
-    ## TODO: should these be omitted? or set to 'early' as though recently disturbed?
-    cohortData2 <- cohortData2[!grepl("^NDT5_", NDTBEC) & !is.na(SeralStage) & !is.nan(propB), ]
-  }
+  ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omitted?
+  cohortData2[!grepl("^NDT5_", NDTBEC) & !is.na(SeralStage), SeralStage := "early"]
 
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
 
