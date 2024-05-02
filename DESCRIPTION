@@ -1,14 +1,15 @@
 Package: nrvtools
-Title: Tools for Summarizing Outputs From Natural Range of Variability Simulations
+Title: Tools for Summarizing Outputs From Natural Range of Variability
+    Simulations
 Version: 0.0.1
 Authors@R: 
     person(c("Alex", "M"), "Chubaty", , "achubaty@for-cast.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7146-8135"))
-Description: Tools and utilities for working with outputs from NRV simulations.
+Description: Tools and utilities for working with outputs from NRV
+    simulations.
 License: GPL (>= 3)
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+URL: https://github.com/FOR-CAST/nrvtools
+BugReports: https://github.com/FOR-CAST/nrvtools/issues
 Imports: 
     assertthat,
     data.table,
@@ -38,5 +39,6 @@ Remotes:
     PredictiveEcology/pemisc@development,
     PredictiveEcology/SpaDES.tools@rasterizeReduced
 Config/testthat/edition: 3
-URL: https://github.com/FOR-CAST/nrvtools
-BugReports: https://github.com/FOR-CAST/nrvtools/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
