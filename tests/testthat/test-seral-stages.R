@@ -12,27 +12,21 @@ test_that("BC seral stage calculations work", {
 
   ml <- readRDS(file.path(outputDir, "ml_preamble.rds"))
 
-  ## includes ZONE and NATURAL_DISTURBANCE columns
-  # targetCRS <- paste("+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77",
-  #                    "+x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs") ## LCC2010
-  # becZones <- bcdata::bcdc_get_data("f358a53b-ffde-4830-a325-a5a03ff672c3") |>
-  #   sf::st_cast("MULTIPOLYGON") |>
-  #   sf::st_transform(targetCRS)
+  NDTBEC <- ml$`ecoregionLayer (NDTxBEC)`
 
-  studyArea3 <- map::studyArea(ml, 3) ## ml[[grep("\\(studyArea\\)", names(ml), value = TRUE)]]
-  NDTBEC <- sf::st_crop(ml$`BEC zones`, studyArea3) |>
-    dplyr::mutate(NDTBEC = paste0(NATURAL_DISTURBANCE, "_", ZONE)) |>
-    dplyr::group_by(NDTBEC) |>
-    dplyr::summarise()
+  rm(ml)
 
-  cd <- file.path(outputDir, "cohortData_year0800.qs")
-  pgm <- file.path(outputDir, "pixelGroupMap_year0800.tif")
+  years <- c(0, 800, 1000, 1200) ## year 0 has no pixelGroup 0 values; other years do.
+  lapply(years, function(yr) {
+    cd <- file.path(outputDir, sprintf("cohortData_year%04d.qs", yr))
+    pgm <- file.path(outputDir, sprintf("pixelGroupMap_year%04d.tif", yr))
 
-  ssm <- seralStageMapGeneratorBC(cd, pgm, NDTBEC)
+    ssm <- seralStageMapGeneratorBC(cd, pgm, NDTBEC)
 
-  seral <- terra::levels(ssm)[[1]]
-  ptchs <- landscapemetrics::get_patches(ssm)[[1]]
-  names(ptchs) <- seral[match(sub("^class_", "", names(ptchs)), seral[["id"]]), "values"]
+    seral <- terra::levels(ssm)[[1]]
+    ptchs <- landscapemetrics::get_patches(ssm)[[1]]
+    names(ptchs) <- seral[match(sub("^class_", "", names(ptchs)), seral[["id"]]), "values"]
 
-  expect_identical(names(ptchs), c("early", "mature", "mid", "old"))
+    expect_identical(names(ptchs), c("early", "mature", "mid", "old"))
+  })
 })

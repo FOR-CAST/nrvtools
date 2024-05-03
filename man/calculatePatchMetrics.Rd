@@ -23,3 +23,6 @@ summary \code{data.frame} object
 \description{
 Calculate patch statistics/metrics
 }
+\seealso{
+\code{\link[=calculatePatchMetricsSeral]{calculatePatchMetricsSeral()}}
+}

@@ -25,3 +25,6 @@ These functions must work analogously to those in \pkg{landscapemetrics}.}
 \description{
 Calculate patch statistics (metrics) based on seral stages
 }
+\seealso{
+\code{\link[=patchStats]{patchStats()}}
+}

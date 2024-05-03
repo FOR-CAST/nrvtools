@@ -91,7 +91,7 @@ patchAreasSeral <- function(ssm) {
 #' @return nested list of summary data.frames containing patch statistics by summary polygon
 #'
 #' @export
-#' @seelaso [patchStatsSeral()]
+#' @seealso [patchStatsSeral()]
 patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList) {
   f <- raster::raster(flm)
   t <- raster::raster(sam)
@@ -147,7 +147,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 #' @template funList
 #'
 #' @export
-#' @seelaso [patchStats()]
+#' @seealso [patchStats()]
 patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList) {
   f <- raster::raster(flm)
   s <- raster::raster(ssm)
@@ -192,7 +192,7 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 #' @return summary `data.frame` object
 #'
 #' @export
-#' @seelaso [calculatePatchMetricsSeral()]
+#' @seealso [calculatePatchMetricsSeral()]
 calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam) {
   if (!is(summaryPolys, "sf"))
     summaryPolys <- sf::st_as_sf(summaryPolys)
@@ -284,7 +284,7 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam) {
 #' @return summary `data.frame` object
 #'
 #' @export
-#' @seelaso [calculatePatchMetrics()]
+#' @seealso [calculatePatchMetrics()]
 calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
   if (!is(summaryPolys, "sf"))
     summaryPolys <- sf::st_as_sf(summaryPolys)

@@ -30,3 +30,6 @@ nested list of summary data.frames containing patch statistics by summary polygo
 \description{
 Calculate patch statistics/metrics
 }
+\seealso{
+\code{\link[=patchStatsSeral]{patchStatsSeral()}}
+}

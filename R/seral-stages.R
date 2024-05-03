@@ -52,12 +52,11 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   ## reassign pixelGoup ids to account for NDTBEC
   pgmByNdtbec[, newPixelGroup := .I]
 
-  rcl <- data.table::copy(pgmByNdtbec) |>
-    set(NULL, "pixelID", NULL) |>
-    set(NULL, "NDTBEC", NULL) |>
-    as.matrix()
+  nrows <- NROW(pgmByNdtbec)
+  assertthat::assert_that(identical(nrows, length(unique(pgmByNdtbec$pixelID))))
 
-  pixelGroupMap2 <- terra::classify(pixelGroupMap, rcl) ## zeroes stay zeroes
+  pixelGroupMap2 <- terra::deepcopy(pixelGroupMap)
+  pixelGroupMap2[pgmByNdtbec$pixelID] <- pgmByNdtbec$newPixelGroup
 
   cohortData2 <- data.table::copy(cohortData)
   cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup"]
@@ -69,7 +68,11 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[, totalB := sum(B, na.rm = TRUE), by = PgNdtBec]
   cohortData2[, propB := sum(B, na.rm = TRUE) / totalB[1], by = SpPgNdtBec]
   cohortData2[, weightedAge := floor(sum(age * B) / sum(B) / 10) * 10, by = PgNdtBec]
-  set(cohortData2, NULL, c("age", "aNPPAct", "B", "ecoregionGroup", "mortality", "totalB"), NULL)
+  for (col2rm in c("age", "aNPPAct", "B", "ecoregionGroup", "mortality", "totalB")) {
+    if (col2rm %in% colnames(cohortData2)) {
+      set(cohortData2, NULL, col2rm, NULL)
+    }
+  }
   cohortData2 <- unique(cohortData2)
 
   ## seral stages based on Table 7 of Cariboo regional Biodiversity Conservation Strategy Report,
