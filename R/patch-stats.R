@@ -164,7 +164,7 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
       fn <- get(fun)
-      dt <- fn(ssm)
+      dt <- fn(scm)
       message("...done!")
 
       dt
@@ -203,7 +203,7 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam) {
   names(funList) <- funList
 
   oldPlan <- future::plan() |>
-    future::tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
+    tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
     future::plan()
   on.exit(plan(oldPlan), add = TRUE)
 
@@ -218,7 +218,7 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam) {
     ),
     SIMPLIFY = FALSE,
     future.globals = funList,
-    future.packages = c("dplyr", "landscapemetrics", "sf", "terra")
+    future.packages = c("dplyr", "landscapemetrics", "nrvtools", "sf", "terra")
   )
   names(ptch_stats) <- basename(dirname(vtm)) ## repXX
 
@@ -295,7 +295,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
   names(funList) <- funList
 
   oldPlan <- future::plan() |>
-    future::tweak(workers = pemisc::optimalClusterNum(5000, length(ssm))) |>
+    tweak(workers = pemisc::optimalClusterNum(5000, length(ssm))) |>
     future::plan()
   on.exit(plan(oldPlan), add = TRUE)
 
@@ -310,7 +310,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
     ),
     SIMPLIFY = FALSE,
     future.globals = funList,
-    future.packages = c("dplyr", "landscapemetrics", "sf", "terra")
+    future.packages = c("dplyr", "landscapemetrics", "nrvtools", "sf", "terra")
   )
   names(ptch_stats) <- basename(dirname(ssm)) ## repXX
 

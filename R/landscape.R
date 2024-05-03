@@ -28,7 +28,7 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm) {
   names(funList) <- funList
 
   oldPlan <- future::plan() |>
-    future::tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
+    tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
     future::plan()
   on.exit(future::plan(oldPlan), add = TRUE)
 
@@ -51,7 +51,7 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm) {
     names(byPoly) <- paste(tools::file_path_sans_ext(basename(f)), polyNames , sep = "_") ## vegTypeMap_yearXXXX_polyName
 
     byPoly
-  }, future.packages = c("landscapemetrics", "sf", "terra"))
+  }, future.packages = c("landscapemetrics", "nrvtools", "sf", "terra"))
   names(fragStats) <- basename(dirname(vtm)) ## repXX
 
   fragStats <- purrr::transpose(lapply(fragStats, purrr::transpose)) ## puts fun names as outer list elements

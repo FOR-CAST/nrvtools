@@ -1,3 +1,9 @@
+# nrvtools 0.0.4
+
+- fix use of `tweak()` prior to parallel calculations;
+- fix issue with `patchStatsSeral()` where raster filename was being passed instead of the raster object;
+- ensure `nrvtools` gets loaded in `future.apply` workers
+
 # nrvtools 0.0.3
 
 - simplify seral stage classifications to put all non-fir into pine group for NDT4
