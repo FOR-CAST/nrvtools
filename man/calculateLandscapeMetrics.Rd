@@ -4,7 +4,7 @@
 \alias{calculateLandscapeMetrics}
 \title{Calculate landscape metrics}
 \usage{
-calculateLandscapeMetrics(summaryPolys, polyCol, vtm)
+calculateLandscapeMetrics(summaryPolys, polyCol, vtm, funList = NULL)
 }
 \arguments{
 \item{summaryPolys}{\code{sf} polygons object}
@@ -12,6 +12,9 @@ calculateLandscapeMetrics(summaryPolys, polyCol, vtm)
 \item{polyCol}{character, specifying the polygon attribute (column) in \code{summaryPolys} to use}
 
 \item{vtm}{character, specifying the file path to a vegetation type map raster (\code{.tif})}
+
+\item{funList}{list of character strings specifying function names used to calculate summary
+landscape metrics.}
 }
 \value{
 summary \code{data.frame} object

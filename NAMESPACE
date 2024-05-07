@@ -3,6 +3,8 @@
 export(calculateLandscapeMetrics)
 export(calculatePatchMetrics)
 export(calculatePatchMetricsSeral)
+export(default_landscape_metrics)
+export(default_patch_metrics)
 export(patchAges)
 export(patchAreas)
 export(patchAreasSeral)

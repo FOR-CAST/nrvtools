@@ -2,6 +2,20 @@ utils::globalVariables(c(
   "N", "poly", "sd", "se", "time", "value"
 ))
 
+#' Default landscape metrics
+#'
+#' @export
+default_landscape_metrics <- function() {
+  list(
+    "landscapemetrics::lsm_l_area_mn",
+    "landscapemetrics::lsm_l_cohesion",
+    "landscapemetrics::lsm_l_condent",
+    "landscapemetrics::lsm_l_core_cv",
+    "landscapemetrics::lsm_l_ed",
+    "landscapemetrics::lsm_l_iji"
+  )
+}
+
 #' Calculate landscape metrics
 #'
 #' @template summaryPolys
@@ -10,21 +24,21 @@ utils::globalVariables(c(
 #'
 #' @template vtm
 #'
+#' @param funList list of character strings specifying function names used to calculate summary
+#'                landscape metrics.
+#'
 #' @return summary `data.frame` object
 #'
 #' @export
-calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm) {
+calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL) {
   if (!is(summaryPolys, "sf"))
     summaryPolys <- sf::st_as_sf(summaryPolys)
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
-  funList <- list("landscapemetrics::lsm_l_area_mn",
-                  "landscapemetrics::lsm_l_cohesion",
-                  "landscapemetrics::lsm_l_condent",
-                  "landscapemetrics::lsm_l_core_cv",
-                  "landscapemetrics::lsm_l_ed",
-                  "landscapemetrics::lsm_l_iji") ## TODO: let user pass this (i.e from the module)
+  if (is.null(funList)) {
+    funList <- default_landscape_metrics()
+  }
   names(funList) <- funList
 
   oldPlan <- future::plan() |>

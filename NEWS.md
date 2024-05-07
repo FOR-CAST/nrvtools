@@ -1,3 +1,7 @@
+# nrvtools 0.0.6
+
+- `calculateLandscapeMetrics()` and `calculatePatchMetrics()` gain argument `funList` to to allow the user to pass their own list of function names. If not specified, defaults to `default_landscape_metrics()` and `default_patch_metrics()`, respectively.
+
 # nrvtools 0.0.5
 
 - fix and speedup pixel group reclassification problem in `seralStageMapGeneratorBC()`;
