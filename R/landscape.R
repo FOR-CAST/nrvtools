@@ -7,12 +7,12 @@ utils::globalVariables(c(
 #' @export
 default_landscape_metrics <- function() {
   list(
-    "landscapemetrics::lsm_l_area_mn",
-    "landscapemetrics::lsm_l_cohesion",
-    "landscapemetrics::lsm_l_condent",
-    "landscapemetrics::lsm_l_core_cv",
-    "landscapemetrics::lsm_l_ed",
-    "landscapemetrics::lsm_l_iji"
+    "lsm_l_area_mn",
+    "lsm_l_cohesion",
+    "lsm_l_condent",
+    "lsm_l_core_cv",
+    "lsm_l_ed",
+    "lsm_l_iji"
   )
 }
 
