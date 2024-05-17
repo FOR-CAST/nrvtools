@@ -65,7 +65,7 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL
     names(byPoly) <- paste(tools::file_path_sans_ext(basename(f)), polyNames , sep = "_") ## vegTypeMap_yearXXXX_polyName
 
     byPoly
-  }, future.packages = c("landscapemetrics", "nrvtools", "sf", "terra"))
+  }, future.packages = c("landscapemetrics", "nrvtools", "sf", "terra"), future.seed = TRUE)
   names(fragStats) <- basename(dirname(vtm)) ## repXX
 
   fragStats <- purrr::transpose(lapply(fragStats, purrr::transpose)) ## puts fun names as outer list elements

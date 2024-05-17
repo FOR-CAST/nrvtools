@@ -1,3 +1,7 @@
+# nrvtools 0.0.7
+
+- pass `future.seed = TRUE` to `future.apply` calls to avoid 'UNRELIABLE VALUE' from RNG;
+
 # nrvtools 0.0.6
 
 - `calculateLandscapeMetrics()` and `calculatePatchMetrics()` gain argument `funList` to to allow the user to pass their own list of function names. If not specified, defaults to `default_landscape_metrics()` and `default_patch_metrics()`, respectively.
