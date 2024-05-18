@@ -2,20 +2,6 @@ utils::globalVariables(c(
   "N", "poly", "sd", "se", "time", "value"
 ))
 
-#' Default landscape metrics
-#'
-#' @export
-default_landscape_metrics <- function() {
-  list(
-    "lsm_l_area_mn",
-    "lsm_l_cohesion",
-    "lsm_l_condent",
-    "lsm_l_core_cv",
-    "lsm_l_ed",
-    "lsm_l_iji"
-  )
-}
-
 #' Calculate landscape metrics
 #'
 #' @template summaryPolys

@@ -1,3 +1,7 @@
+# nrvtools 0.0.8
+
+- updated default metrics to include aggregation indices and additional area metrics (see `?default_metrics`);
+
 # nrvtools 0.0.7
 
 - pass `future.seed = TRUE` to `future.apply` calls to avoid 'UNRELIABLE VALUE' from RNG;

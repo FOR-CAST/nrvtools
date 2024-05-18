@@ -2,16 +2,6 @@ utils::globalVariables(c(
   "class", "id", "layer", "level", "metric", "N", "poly", "sd",  "se", "time", "value"
 ))
 
-#' Default patch metrics
-#'
-#' @export
-default_patch_metrics <- function() {
-  list(
-    "patchAges", ## nrvtools
-    "patchAreas" ## nrvtools
-  )
-}
-
 #' Calculate areas for each patch (per species)
 #'
 #' @template vtm
@@ -212,7 +202,9 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
-  funList <- default_patch_metrics()
+  if (is.null(funList)) {
+    funList <- default_patch_metrics()
+  }
   names(funList) <- funList
 
   oldPlan <- future::plan() |>
@@ -305,7 +297,9 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
-  funList <- list("patchAreasSeral") ## patch ages don't make sense here since age determines patches
+  if (is.null(funList)) {
+    funList <- default_patch_metrics_seral()
+  }
   names(funList) <- funList
 
   oldPlan <- future::plan() |>
