@@ -1,3 +1,10 @@
+# nrvtools 0.0.9
+
+- remove direct dependency on `future` package;
+- no longer call `plan()` nor `tweak()` - to allow user to set their `future` plan;
+- pass `ndtbec` as filename instead of `sf` polygons object to `seralStageMapGeneratorBC()` to avoid serializing this object in `future.apply` calls;
+- improved documentation;
+
 # nrvtools 0.0.8
 
 - updated default metrics to include aggregation indices and additional area metrics (see `?default_metrics`);

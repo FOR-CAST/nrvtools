@@ -20,21 +20,30 @@ utils::globalVariables(c(
 #'
 #' @template pgm
 #'
-#' @param ndtbec `sf` polygons object delineating BEC zanes and Natural Disturbance Type polygons.
+#' @param ndtbec character specifying the file path to e.g., a shapefile delineating
+#'        BEC zones and Natural Disturbance Type polygons.
 #'
 #' @return seral stage map (`SpatRaster`)
 #'
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' if (require("bcdata", quietly = TRUE)) {
 #'   becZones <- bcdata::bcdc_get_data("f358a53b-ffde-4830-a325-a5a03ff672c3")
 #' }
+#' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
+  stopifnot(
+    is.character(cd) && file.exists(cd),
+    is.character(pgm) && file.exists(pgm),
+    is.character(ndtbec) && file.exists(ndtbec)
+  )
   cohortData <- qs::qread(cd)
   pixelGroupMap <- terra::rast(pgm)
+  NDTBEC <- sf::st_read(ndtbec, quiet = TRUE)
 
-  rstNDTBEC <- terra::rasterize(ndtbec, pixelGroupMap, "NDTBEC")
+  rstNDTBEC <- terra::rasterize(NDTBEC, pixelGroupMap, "NDTBEC")
   assertthat::assert_that(terra::compareGeom(rstNDTBEC, pixelGroupMap))
 
   lvls <- terra::levels(rstNDTBEC)[[1]]

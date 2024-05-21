@@ -11,7 +11,8 @@ seralStageMapGeneratorBC(cd, pgm, ndtbec)
 
 \item{pgm}{character, specifying the file path to a \code{pixelGroupMap} raster (\code{.tif})}
 
-\item{ndtbec}{\code{sf} polygons object delineating BEC zanes and Natural Disturbance Type polygons.}
+\item{ndtbec}{character specifying the file path to e.g., a shapefile delineating
+BEC zones and Natural Disturbance Type polygons.}
 }
 \value{
 seral stage map (\code{SpatRaster})
@@ -30,7 +31,9 @@ paste0("https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry
 "cariboo-region/cariboochilcotin-rlup/update_note_3.pdf")
 }
 \examples{
+\dontrun{
 if (require("bcdata", quietly = TRUE)) {
   becZones <- bcdata::bcdc_get_data("f358a53b-ffde-4830-a325-a5a03ff672c3")
+}
 }
 }

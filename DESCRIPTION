@@ -14,7 +14,6 @@ Imports:
     assertthat,
     data.table,
     dplyr,
-    future,
     future.apply,
     ggforce,
     ggplot2,

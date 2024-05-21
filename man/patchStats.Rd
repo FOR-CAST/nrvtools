@@ -21,8 +21,9 @@ to summarize patch statistics}
 \item{polyCol}{character, specifying the polygon attribute (column) in \code{summaryPolys} to use}
 
 \item{funList}{list of character strings specifying functions to use for calculating
-patch statistics (e.g., \code{list("landscapemetrics::lsm_l_area_mn")}).
-These functions must work analogously to those in \pkg{landscapemetrics}.}
+landscape or patch statistics (e.g., \code{list("lsm_l_area_mn")}).
+These functions must work analogously to those in \pkg{landscapemetrics}.
+See \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code{\link[=default_patch_metrics]{default_patch_metrics()}}, \code{\link[=default_patch_metrics_seral]{default_patch_metrics_seral()}}.}
 }
 \value{
 nested list of summary data.frames containing patch statistics by summary polygon

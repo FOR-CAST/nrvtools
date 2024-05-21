@@ -12,7 +12,8 @@ test_that("BC seral stage calculations work", {
 
   ml <- readRDS(file.path(outputDir, "ml_preamble.rds"))
 
-  NDTBEC <- ml$`ecoregionLayer (NDTxBEC)`
+  fNDTBEC <- tempfile(fileext = ".shp")
+  sf::st_write(ml$`ecoregionLayer (NDTxBEC)`, fNDTBEC, delete_dsn = TRUE)
 
   rm(ml)
 
@@ -21,7 +22,7 @@ test_that("BC seral stage calculations work", {
     cd <- file.path(outputDir, sprintf("cohortData_year%04d.qs", yr))
     pgm <- file.path(outputDir, sprintf("pixelGroupMap_year%04d.tif", yr))
 
-    ssm <- seralStageMapGeneratorBC(cd, pgm, NDTBEC)
+    ssm <- seralStageMapGeneratorBC(cd, pgm, fNDTBEC)
 
     seral <- terra::levels(ssm)[[1]]
     ptchs <- landscapemetrics::get_patches(ssm)[[1]]

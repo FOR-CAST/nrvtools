@@ -10,8 +10,7 @@ utils::globalVariables(c(
 #'
 #' @template vtm
 #'
-#' @param funList list of character strings specifying function names used to calculate summary
-#'                landscape metrics.
+#' @template funList
 #'
 #' @return summary `data.frame` object
 #'
@@ -26,11 +25,6 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL
     funList <- default_landscape_metrics()
   }
   names(funList) <- funList
-
-  oldPlan <- future::plan() |>
-    tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
-    future::plan()
-  on.exit(future::plan(oldPlan), add = TRUE)
 
   fragStats <- future.apply::future_lapply(vtm, function(f) {
     r <- terra::rast(f)

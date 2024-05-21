@@ -207,11 +207,6 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
   }
   names(funList) <- funList
 
-  oldPlan <- future::plan() |>
-    tweak(workers = pemisc::optimalClusterNum(5000, length(vtm))) |>
-    future::plan()
-  on.exit(plan(oldPlan), add = TRUE)
-
   ptch_stats <- future.apply::future_mapply(
     patchStats, vtm = vtm, sam = sam,
     MoreArgs = list(
@@ -301,11 +296,6 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
     funList <- default_patch_metrics_seral()
   }
   names(funList) <- funList
-
-  oldPlan <- future::plan() |>
-    tweak(workers = pemisc::optimalClusterNum(5000, length(ssm))) |>
-    future::plan()
-  on.exit(plan(oldPlan), add = TRUE)
 
   ptch_stats <- future.apply::future_mapply(
     patchStatsSeral, ssm = ssm,
