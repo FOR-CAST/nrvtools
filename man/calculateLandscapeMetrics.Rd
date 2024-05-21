@@ -13,10 +13,11 @@ calculateLandscapeMetrics(summaryPolys, polyCol, vtm, funList = NULL)
 
 \item{vtm}{character, specifying the file path to a vegetation type map raster (\code{.tif})}
 
-\item{funList}{list of character strings specifying functions to use for calculating
+\item{funList}{optional list of character strings specifying functions to use for calculating
 landscape or patch statistics (e.g., \code{list("lsm_l_area_mn")}).
 These functions must work analogously to those in \pkg{landscapemetrics}.
-See \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code{\link[=default_patch_metrics]{default_patch_metrics()}}, \code{\link[=default_patch_metrics_seral]{default_patch_metrics_seral()}}.}
+If not specified by the user (i.e., \code{funList = NULL}), default function names are used:
+see \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code{\link[=default_patch_metrics]{default_patch_metrics()}}, \code{\link[=default_patch_metrics_seral]{default_patch_metrics_seral()}}.}
 }
 \value{
 summary \code{data.frame} object

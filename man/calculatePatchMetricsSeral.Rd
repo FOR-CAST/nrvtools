@@ -4,7 +4,7 @@
 \alias{calculatePatchMetricsSeral}
 \title{Calculate patch statistics/metrics}
 \usage{
-calculatePatchMetricsSeral(summaryPolys, polyCol, flm, ssm)
+calculatePatchMetricsSeral(summaryPolys, polyCol, flm, ssm, funList = NULL)
 }
 \arguments{
 \item{summaryPolys}{\code{sf} polygons object}
@@ -14,6 +14,12 @@ calculatePatchMetricsSeral(summaryPolys, polyCol, flm, ssm)
 \item{flm}{character, specifying the file path to a flammability map raster (\code{.tif})}
 
 \item{ssm}{character, specifying the file path to a seral stage map raster (\code{.tif})}
+
+\item{funList}{optional list of character strings specifying functions to use for calculating
+landscape or patch statistics (e.g., \code{list("lsm_l_area_mn")}).
+These functions must work analogously to those in \pkg{landscapemetrics}.
+If not specified by the user (i.e., \code{funList = NULL}), default function names are used:
+see \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code{\link[=default_patch_metrics]{default_patch_metrics()}}, \code{\link[=default_patch_metrics_seral]{default_patch_metrics_seral()}}.}
 }
 \value{
 summary \code{data.frame} object

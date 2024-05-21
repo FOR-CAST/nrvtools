@@ -1,3 +1,7 @@
+# nrvtools 0.0.10
+
+- pass `funList` to `calculatePatchMetricsSeral()` to allow the user to pass their own list of function names;
+
 # nrvtools 0.0.9
 
 - remove direct dependency on `future` package;

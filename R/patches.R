@@ -189,8 +189,7 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 #'
 #' @template sam
 #'
-#' @param funList list of character strings specifying function names used to calculate summary
-#'                patch metrics. When `NULL`, [default_patch_metrics()] is used.
+#' @template funList
 #'
 #' @return summary `data.frame` object
 #'
@@ -282,11 +281,13 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
 #'
 #' @template ssm
 #'
+#' @template funList
+#'
 #' @return summary `data.frame` object
 #'
 #' @export
 #' @seealso [calculatePatchMetrics()]
-calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm) {
+calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList = NULL) {
   if (!is(summaryPolys, "sf"))
     summaryPolys <- sf::st_as_sf(summaryPolys)
 
