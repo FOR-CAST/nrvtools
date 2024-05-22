@@ -229,7 +229,3 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   return(ssm)
 }
-
-## TODO: seral stage versions of:
-## - calculatePatchMetrics(..., vtm, sam) ==> calculatePatchMetricsSeral(..., ssm)
-## - patchMetrics(sim) ==> patchMetricsSeral(sim)
