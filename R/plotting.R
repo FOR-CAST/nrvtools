@@ -25,11 +25,24 @@ plot_over_time <- function(summary_df, ylabel, page = 1) {
     ylab(ylabel)
 }
 
+#' @export
+#' @rdname plot_by
+plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
+  ggplot(summary_df, aes(x = time, y = mn, col = class)) +
+    ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
+    geom_point() +
+    geom_line() +
+    geom_errorbar(aes(ymin = mn - sd, ymax = mn + sd), width = 0.5) +
+    theme_bw() +
+    theme(legend.position = "bottom") +
+    ylab(ylabel)
+}
+
 #' @param type character, specifying one of "box" or "violin"
 #'
 #' @export
 #' @rdname plot_by
-plot_by_species <- function(summary_df, type = c("box", "violin"), page = 1) {
+plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
   ggplot(summary_df, aes(x = class, y = mn)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     switch(type,

@@ -256,7 +256,10 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
         dplyr::summarise(
           N = length(value),
           mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
+          q1 = ifelse(N > 0, quantile(value, 0.25, na.rm = TRUE), NA_real_),
+          md = ifelse(N > 0, median(value, na.rm = TRUE), NA_real_),
           mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
+          q3 = ifelse(N > 0, quantile(value, 0.75, na.rm = TRUE), NA_real_),
           mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
           sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
           se = ifelse(N > 0, sd / sqrt(N), NA_real_),
@@ -341,19 +344,22 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
       if (nrow(x[[i]]) == 0) {
         x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
                              id = integer(0), metric = character(0), value = numeric(0))
-
       }
       dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i]) |>
         dplyr::group_by(class, time, poly, metric) |>
         dplyr::summarise(
           N = length(value),
           mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
+          q1 = ifelse(N > 0, quantile(value, 0.25, na.rm = TRUE), NA_real_),
+          md = ifelse(N > 0, median(value, na.rm = TRUE), NA_real_),
           mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
+          q3 = ifelse(N > 0, quantile(value, 0.75, na.rm = TRUE), NA_real_),
           mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
           sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
           se = ifelse(N > 0, sd / sqrt(N), NA_real_),
           ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
-        )
+        ) |>
+        dplyr::mutate(class = factor(class, levels = c("early", "mid", "mature", "old")))
     }))
 
     df

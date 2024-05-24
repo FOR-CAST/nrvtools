@@ -65,6 +65,7 @@
 #' @importFrom stats median
 #' @importFrom stats na.omit
 #' @importFrom stats qt
+#' @importFrom stats quantile
 #' @importFrom stats sd
 #' @importFrom terra classify
 #' @importFrom terra compareGeom

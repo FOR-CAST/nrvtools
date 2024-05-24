@@ -2,12 +2,15 @@
 % Please edit documentation in R/plotting.R
 \name{plot_over_time}
 \alias{plot_over_time}
-\alias{plot_by_species}
+\alias{plot_over_time_by_class}
+\alias{plot_by_class}
 \title{NRV summary plots}
 \usage{
 plot_over_time(summary_df, ylabel, page = 1)
 
-plot_by_species(summary_df, type = c("box", "violin"), page = 1)
+plot_over_time_by_class(summary_df, ylabel, page = 1)
+
+plot_by_class(summary_df, type = c("box", "violin"), page = 1)
 }
 \arguments{
 \item{summary_df}{summary \code{data.frame} object containing the data to use for plotting}

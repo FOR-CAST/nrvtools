@@ -1,6 +1,10 @@
-# nrvtools (development version)
+# nrvtools 0.0.11
 
-- use `future.globals = FALSE` as we are already passing the vars needed to the fun
+- add quartiles (including median) to all summary data.frames;
+- rename `plot_by_species()` to `plot_by_class()` to reflect that it can plot by any class (e.g., seral stage);
+- new function `plot_over_time_by_class()` which is analogous to `plot_over_time()` but plots all classes on same panel;
+- use `future.globals = FALSE` as we are already passing the vars needed to the fun;
+- updated seral stage tests;
 
 # nrvtools 0.0.10
 
