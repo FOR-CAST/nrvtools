@@ -216,7 +216,7 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
       funList = funList
     ),
     SIMPLIFY = FALSE,
-    future.globals = funList,
+    future.globals = FALSE,
     future.packages = c("dplyr", "landscapemetrics", "nrvtools", "sf", "terra"),
     future.seed = TRUE
   )
@@ -308,7 +308,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
       funList = funList
     ),
     SIMPLIFY = FALSE,
-    future.globals = funList,
+    future.globals = FALSE,
     future.packages = c("dplyr", "landscapemetrics", "nrvtools", "sf", "terra"),
     future.seed = TRUE
   )

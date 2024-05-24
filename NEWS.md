@@ -1,3 +1,7 @@
+# nrvtools (development version)
+
+- use `future.globals = FALSE` as we are already passing the vars needed to the fun
+
 # nrvtools 0.0.10
 
 - pass `funList` to `calculatePatchMetricsSeral()` to allow the user to pass their own list of function names;
