@@ -1,3 +1,8 @@
+# nrvtools 0.0.12
+
+- ensure consistent factor levels for seral stages;
+- ensure consistent level ids used for matching;
+
 # nrvtools 0.0.11
 
 - add quartiles (including median) to all summary data.frames;

@@ -27,7 +27,7 @@ test_that("BC seral stage calculations work", {
     areas <- patchAreasSeral(ssm) |>
       dplyr::mutate(rep = run, time = yr, poly = "NDTBEC")
 
-    expect_identical(unique(areas$class), c("early", "mature", "mid", "old"))
+    expect_identical(unique(areas$class), c("early", "mid", "mature", "old"))
 
     return(areas)
   }) |>
@@ -55,4 +55,6 @@ test_that("BC seral stage calculations work", {
 
     plot_over_time_by_class(dplyr::filter(summary_df, time > 0), ylabel = "Mean area (ha)", page = 1)
   }
+
+  unlink(fNDTBEC)
 })

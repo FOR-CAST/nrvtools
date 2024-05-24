@@ -47,7 +47,8 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   assertthat::assert_that(terra::compareGeom(rstNDTBEC, pixelGroupMap))
 
   lvls <- terra::levels(rstNDTBEC)[[1]]
-  ndtbec <- lvls[match(values(rstNDTBEC, mat = FALSE), lvls$ID), "NDTBEC"]
+  idcol <- which(grepl("id|ID", names(lvls)))
+  ndtbec <- lvls[match(values(rstNDTBEC, mat = FALSE), lvls[[idcol]]), "NDTBEC"]
   assertthat::assert_that(terra::ncell(pixelGroupMap) == length(ndtbec))
 
   pgmByNdtbec <- data.table(
@@ -222,7 +223,8 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
 
-  cohortData2[, SeralStage := as.factor(SeralStage)] ## needs to be a factor for rasterizedReduced
+  ## SeralStage needs to be a factor for rasterizedReduced
+  cohortData2[, SeralStage := factor(SeralStage, levels = c("early", "mid", "mature", "old"))]
 
   ## build seral stage map raster from cohortData2 and pixelGroupMap2
   ssm <- rasterizeReduced(cohortData2, pixelGroupMap2, "SeralStage", mapcode = "newPixelGroup")

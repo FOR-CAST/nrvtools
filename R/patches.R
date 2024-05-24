@@ -14,7 +14,8 @@ patchAreas <- function(vtm) {
   areas <- landscapemetrics::lsm_p_area(vtm)
   areas <- areas[areas$class != 0, ] ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- raster::levels(vtm)[[1]]
-  sppNames <- spp[match(areas$class, spp[["id"]]), ][["values"]]
+  idcol <- which(grepl("id|ID", names(spp)))
+  sppNames <- spp[match(areas$class, spp[[idcol]]), ][["values"]]
 
   areas <- dplyr::mutate(areas, class = sppNames)
 
@@ -65,7 +66,8 @@ patchAges <- function(vtm, sam) {
 patchAreasSeral <- function(ssm) {
   areas <- landscapemetrics::lsm_p_area(ssm)
   seral <- terra::levels(ssm)[[1]]
-  seralNames <- seral[match(areas$class, seral[["id"]]), ][["values"]]
+  idcol <- which(grepl("id|ID", names(seral)))
+  seralNames <- seral[match(areas[["class"]], seral[[idcol]]), ][["values"]]
 
   areas <- dplyr::mutate(areas, class = seralNames)
 
