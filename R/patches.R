@@ -347,7 +347,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
         x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
                              id = integer(0), metric = character(0), value = numeric(0))
       }
-      dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i]) |>
+      out <- dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i]) |>
         dplyr::group_by(class, time, poly, metric) |>
         dplyr::summarise(
           N = length(value),
@@ -361,7 +361,9 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
           se = ifelse(N > 0, sd / sqrt(N), NA_real_),
           ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
         ) |>
-        dplyr::mutate(class = factor(class, levels = c("early", "mid", "mature", "old")))
+        dplyr::mutate(class = as.factor(class))
+      levels(out$class) <- c("early", "mid", "mature", "old")
+      out
     }))
 
     df

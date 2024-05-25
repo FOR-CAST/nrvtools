@@ -47,7 +47,8 @@ test_that("BC seral stage calculations work", {
       se = ifelse(N > 0, sd / sqrt(N), NA_real_),
       ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
     ) |>
-    dplyr::mutate(class = factor(class, levels = c("early", "mid", "mature", "old")))
+    dplyr::mutate(class = as.factor(class))
+  levels(summary_df$class) <- c("early", "mid", "mature", "old")
 
   if (interactive()) {
     plot_by_class(dplyr::filter(summary_df, time > 0), type = "box", page = 1) +

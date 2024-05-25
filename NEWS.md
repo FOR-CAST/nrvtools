@@ -1,3 +1,7 @@
+# nrvtools 0.0.13
+
+- more factor level fixes for seral stages;
+
 # nrvtools 0.0.12
 
 - ensure consistent factor levels for seral stages;
