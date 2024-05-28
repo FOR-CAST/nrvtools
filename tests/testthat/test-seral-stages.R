@@ -11,11 +11,11 @@ test_that("BC seral stage calculations work", {
   skip_if_not(dir.exists(outputDir))
 
   ml <- readRDS(file.path(outputDir, "ml_preamble.rds"))
+  NDTBEC <- ml$`ecoregionLayer (NDTxBEC)`
+  rm(ml)
 
   fNDTBEC <- tempfile(fileext = ".shp")
-  sf::st_write(ml$`ecoregionLayer (NDTxBEC)`, fNDTBEC, delete_dsn = TRUE, quiet = TRUE)
-
-  rm(ml)
+  sf::st_write(NDTBEC, fNDTBEC, delete_dsn = TRUE, quiet = TRUE)
 
   years <- c(0, 800, 1000, 1200) ## year 0 has no pixelGroup 0 values; other years do.
   areas_df <- lapply(years, function(yr) {
