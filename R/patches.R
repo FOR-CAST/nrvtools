@@ -107,7 +107,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 
     tc <- raster::crop(t, subpoly)
     tcm <- raster::mask(tc, subpoly)
-    tcm <- raster::mask(tc, fc, maskvalue = 0) ## mask non-flammable pixels
+    tcm <- raster::mask(tcm, fc, maskvalue = 0) ## also mask non-flammable pixels
 
     vc <- raster::crop(v, subpoly)
     vcm <- raster::mask(vc, subpoly)
@@ -161,7 +161,7 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 
     sc <- raster::crop(s, subpoly)
     scm <- raster::mask(sc, subpoly)
-    scm <- raster::mask(sc, fc, maskvalue = 0) ## mask non-flammable pixels
+    scm <- raster::mask(scm, fc, maskvalue = 0) ## also mask non-flammable pixels
 
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))

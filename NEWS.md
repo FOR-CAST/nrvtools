@@ -1,3 +1,7 @@
+# nrvtools 0.0.14
+
+- fix mask bug in `patchStats()` and `patchStatsSeral()`;
+
 # nrvtools 0.0.13
 
 - more factor level fixes for seral stages;
