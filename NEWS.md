@@ -1,3 +1,7 @@
+# nrvtools 0.0.15
+
+- `group_by()` and `summarize()` steps take place on the entire data.frame to ensure stats for reporting polygons with multiple subpolygons of same name are correctly calculated;
+
 # nrvtools 0.0.14
 
 - fix mask bug in `patchStats()` and `patchStatsSeral()`;
