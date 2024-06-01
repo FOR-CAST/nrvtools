@@ -153,6 +153,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList) {
   f <- raster::raster(flm)
   s <- raster::raster(ssm)
+
   byPoly <- lapply(polyNames, function(polyName) {
     message(paste("  ssm:", basename(ssm)))
     subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
@@ -193,7 +194,7 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 #'
 #' @template funList
 #'
-#' @return summary `data.frame` object
+#' @return `data.frame` object
 #'
 #' @export
 #' @seealso [calculatePatchMetricsSeral()]
@@ -247,14 +248,33 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
     vtmTimes <- as.integer(gsub("year", "", labels2a2))
     vtmStudyAreas <- labels2a3
 
-    df <- do.call(rbind, lapply(seq_along(x), function(i) {
+    do.call(rbind, lapply(seq_along(x), function(i) {
       if (nrow(x[[i]]) == 0) {
         x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
                              id = integer(0), metric = character(0), value = numeric(0))
 
       }
       dplyr::mutate(x[[i]], rep = vtmReps[i], time = vtmTimes[i], poly = vtmStudyAreas[i])
-    })) |>
+    }))
+  })
+  names(ptch_stat_df) <- funList
+
+  return(ptch_stat_df)
+}
+
+#' Summarize patch statistics/metrics
+#'
+#' @param ptch_stat_df named list of patch stat `data.frame` objects,
+#'        with names corresponding to those of `funList` passed to
+#'        `calculatePatchMetrics()` or `calculatePatchMetricsSeral()`.
+#'
+#' @return summary `data.frame` object
+#'
+#' @export
+#' @rdname summarizePatchMetrics
+summarizePatchMetrics <- function(ptch_stat_df) {
+  summary_df <- lapply(names(ptch_stat_df), function(f) {
+    ptch_stat_df[[f]] |>
       dplyr::group_by(class, time, poly, metric) |>
       dplyr::summarise(
         N = length(value),
@@ -268,15 +288,13 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
         se = ifelse(N > 0, sd / sqrt(N), NA_real_),
         ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
       )
-
-    df
   })
-  names(ptch_stat_df) <- funList
+  names(summary_df) <- names(ptch_stat_df)
 
-  return(ptch_stat_df)
+  return(summary_df)
 }
 
-#' Calculate patch statistics/metrics
+#' Calculate seral stage patch statistics/metrics
 #'
 #' @template summaryPolys
 #'
@@ -293,8 +311,9 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
 #' @export
 #' @seealso [calculatePatchMetrics()]
 calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList = NULL) {
-  if (!is(summaryPolys, "sf"))
+  if (!is(summaryPolys, "sf")) {
     summaryPolys <- sf::st_as_sf(summaryPolys)
+  }
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
@@ -304,7 +323,8 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
   names(funList) <- funList
 
   ptch_stats <- future.apply::future_mapply(
-    patchStatsSeral, ssm = ssm,
+    FUN = patchStatsSeral,
+    ssm = ssm,
     MoreArgs = list(
       flm = flm,
       polyCol = polyCol,
@@ -342,32 +362,31 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
     ssmTimes <- as.integer(gsub("year", "", labels2a2))
     ssmStudyAreas <- labels2a3
 
-    df <- do.call(rbind, lapply(seq_along(x), function(i) {
+    do.call(rbind, lapply(seq_along(x), function(i) {
       if (nrow(x[[i]]) == 0) {
         x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
                              id = integer(0), metric = character(0), value = numeric(0))
       }
       dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i])
-    })) |>
-      dplyr::group_by(class, time, poly, metric) |>
-      dplyr::summarise(
-        N = length(value),
-        mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
-        q1 = ifelse(N > 0, quantile(value, 0.25, na.rm = TRUE), NA_real_),
-        md = ifelse(N > 0, median(value, na.rm = TRUE), NA_real_),
-        mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
-        q3 = ifelse(N > 0, quantile(value, 0.75, na.rm = TRUE), NA_real_),
-        mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
-        sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
-        se = ifelse(N > 0, sd / sqrt(N), NA_real_),
-        ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
-      ) |>
-      dplyr::mutate(class = as.factor(class))
-    levels(df$class) <- c("early", "mid", "mature", "old")
-
-    df
+    }))
   })
   names(ptch_stat_df) <- funList
 
   return(ptch_stat_df)
+}
+
+#' @export
+#' @rdname summarizePatchMetrics
+summarizePatchMetricsSeral <- function(ptch_stat_df) {
+  summary_df <- summarizePatchMetrics(ptch_stat_df)
+  summary_df <- lapply(names(summary_df), function(f) {
+    df <- summary_df[[f]] |>
+      dplyr::mutate(class = as.factor(class))
+    levels(df$class) <- c("early", "mid", "mature", "old")
+
+    return(df)
+  })
+  names(summary_df) <- names(ptch_stat_df)
+
+  return(summary_df)
 }

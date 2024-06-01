@@ -1,3 +1,10 @@
+# nrvtools 0.0.16
+
+- split summary table creation from `calculatePatchMetrics()` and `calculatePatchMetricsSeral()` to allow for saving of the full data.frame;
+- new functions `summarizePatchMetrics()` and `summarizePatchMetricsSeral()` to create summary tables;
+- new function `writeSeralStageMapBC()` wraps `seralStageMapGeneratorBC()` in `future.apply::future_mapply()` for processing in parallel;
+- improved testing;
+
 # nrvtools 0.0.15
 
 - `group_by()` and `summarize()` steps take place on the entire data.frame to ensure stats for reporting polygons with multiple subpolygons of same name are correctly calculated;

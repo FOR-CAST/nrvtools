@@ -24,7 +24,7 @@ If not specified by the user (i.e., \code{funList = NULL}), default function nam
 see \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code{\link[=default_patch_metrics]{default_patch_metrics()}}, \code{\link[=default_patch_metrics_seral]{default_patch_metrics_seral()}}.}
 }
 \value{
-summary \code{data.frame} object
+\code{data.frame} object
 }
 \description{
 Calculate patch statistics/metrics

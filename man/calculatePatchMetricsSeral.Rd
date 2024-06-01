@@ -2,7 +2,7 @@
 % Please edit documentation in R/patches.R
 \name{calculatePatchMetricsSeral}
 \alias{calculatePatchMetricsSeral}
-\title{Calculate patch statistics/metrics}
+\title{Calculate seral stage patch statistics/metrics}
 \usage{
 calculatePatchMetricsSeral(summaryPolys, polyCol, flm, ssm, funList = NULL)
 }
@@ -25,7 +25,7 @@ see \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code
 summary \code{data.frame} object
 }
 \description{
-Calculate patch statistics/metrics
+Calculate seral stage patch statistics/metrics
 }
 \seealso{
 \code{\link[=calculatePatchMetrics]{calculatePatchMetrics()}}

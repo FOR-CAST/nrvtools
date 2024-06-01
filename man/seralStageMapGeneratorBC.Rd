@@ -2,9 +2,17 @@
 % Please edit documentation in R/seral-stages.R
 \name{seralStageMapGeneratorBC}
 \alias{seralStageMapGeneratorBC}
+\alias{writeSeralStageMapBC}
 \title{Create map of seral stage classes for BC forests}
 \usage{
 seralStageMapGeneratorBC(cd, pgm, ndtbec)
+
+writeSeralStageMapBC(
+  cd,
+  pgm,
+  ndtbec,
+  ssm = sub("pixelGroupMap", "seralStageMap", pgm)
+)
 }
 \arguments{
 \item{cd}{character, specifying the file path to a \code{cohortData} object (\code{.qs} or \code{.rds})}
@@ -13,13 +21,22 @@ seralStageMapGeneratorBC(cd, pgm, ndtbec)
 
 \item{ndtbec}{character specifying the file path to e.g., a shapefile delineating
 BEC zones and Natural Disturbance Type polygons.}
+
+\item{ssm}{character, specifying the filename(s) to use for seral stage rasters.
+Defaults to using \code{ssm} as a template, replacing \code{pixelGroupMap} with \code{seralStageMap}.}
 }
 \value{
 seral stage map (\code{SpatRaster})
+
+character vector of seral stage map filenames. invoked for side effect of writing to disk.
 }
 \description{
 Seral stages based on Table 7 of Cariboo regional Biodiversity Conservation Strategy Report,
 and Update Note 3 defining the IDF_Fir and IDF_Pine groups:
+
+Wraps \code{seralStageMapGeneratorBC()} in \code{future.apply::future_mapply()} to
+writes multiple seral stage maps to disk, in parallel.
+See \code{?future::plan} for configuring parallel processing.
 }
 \details{
 paste0("https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/",

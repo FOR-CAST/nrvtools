@@ -26,6 +26,7 @@ utils::globalVariables(c(
 #' @return seral stage map (`SpatRaster`)
 #'
 #' @export
+#' @rdname seralStageMapGeneratorBC
 #'
 #' @examples
 #' \dontrun{
@@ -61,7 +62,6 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   ## reassign pixelGoup ids to account for NDTBEC
   pgmByNdtbec[, newPixelGroup := .I]
-
   nrows <- NROW(pgmByNdtbec)
   assertthat::assert_that(identical(nrows, length(unique(pgmByNdtbec$pixelID))))
 
@@ -124,10 +124,10 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge >= 250, SeralStage := "old"]
 
   ## NDT3
-  cohortData2[grepl("NDT3", NDTBEC) & weightedAge < 40, SeralStage := "early"]
-  cohortData2[grepl("NDT3", NDTBEC) & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[grepl("NDT3", NDTBEC) & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
-  cohortData2[grepl("NDT3", NDTBEC) & weightedAge >= 140, SeralStage := "old"]
+  cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge < 40, SeralStage := "early"]
+  cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
+  cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
+  cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge >= 140, SeralStage := "old"]
 
   ## NDT4 -- requires further specification by Pine / Fir group before assigning seral stages
   cohortDataNDT4 <- cohortData2[NDTBEC %in% c("NDT4_BG", "NDT4_IDF"), ]
@@ -218,7 +218,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
 
-  ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omitted?
+  ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omit?
   cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), SeralStage := "early"]
 
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
@@ -230,4 +230,37 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   ssm <- rasterizeReduced(cohortData2, pixelGroupMap2, "SeralStage", mapcode = "newPixelGroup")
 
   return(ssm)
+}
+
+#' Write multiple seral stage maps to disk
+#'
+#' Wraps `seralStageMapGeneratorBC()` in `future.apply::future_mapply()` to
+#' writes multiple seral stage maps to disk, in parallel.
+#' See `?future::plan` for configuring parallel processing.
+#'
+#' @param ssm character, specifying the filename(s) to use for seral stage rasters.
+#'        Defaults to using `ssm` as a template, replacing `pixelGroupMap` with `seralStageMap`.
+#'
+#' @return character vector of seral stage map filenames. invoked for side effect of writing to disk.
+#'
+#' @export
+#' @rdname seralStageMapGeneratorBC
+writeSeralStageMapBC <- function(cd, pgm, ndtbec, ssm = sub("pixelGroupMap", "seralStageMap", pgm)) {
+  ## TODO: very slow; ¿because of automatic serializing of objs in the FUN envir?
+  ## see <https://github.com/HenrikBengtsson/future.apply/issues/98>
+  ## and <https://github.com/HenrikBengtsson/future/issues/608>
+  future.apply::future_mapply(
+    FUN = function(cd, pgm, ndtbec, ssm) {
+      seralStageMapGeneratorBC(cd, pgm, ndtbec) |>
+        terra::writeRaster(ssm, datatype = "INT1U", overwrite = TRUE)
+
+      return(ssm)
+    },
+    cd = cd,
+    pgm = pgm,
+    ssm = ssm,
+    MoreArgs = list(ndtbec = ndtbec),
+    future.globals = FALSE,
+    future.packages = c("nrvtools", "terra")
+  ) |> unname()
 }

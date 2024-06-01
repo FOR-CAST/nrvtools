@@ -1,7 +1,7 @@
 Package: nrvtools
 Title: Tools for Summarizing Outputs From Natural Range of Variability
     Simulations
-Version: 0.0.15
+Version: 0.0.16
 Authors@R: 
     person(c("Alex", "M"), "Chubaty", , "achubaty@for-cast.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7146-8135"))
@@ -31,8 +31,11 @@ Imports:
     utils
 Suggests:
     bcdata,
+    future,
+    future.callr,
     map,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Remotes:
     PredictiveEcology/map@development,
     PredictiveEcology/pemisc@development,
