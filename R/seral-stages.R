@@ -3,6 +3,18 @@ utils::globalVariables(c(
   "Rank", "SeralStage", "speciesCode", "totalB", "weightedAge"
 ))
 
+#' Seral stage classes for BC forests
+#'
+#' "early", "mid", "mature", and "old" are for NDT1, NDT2, NDT3;
+#' "early_Fir", "mid_Fir", "mature_Fir", and "old_Fir" are for NDT4 with Fir leading;
+#' "early_Pine", "mid_Pine", "mature_Pine", and "old_Pine" are for NDT4 with Pine leading;
+#' "early_Other", "mid_Other", "mature_Other", and "old_Other" are for NDT4 with Other leading.
+#'
+.seralStagesBC <- c("early", "early_Fir", "early_Pine", "early_Other",
+                    "mid", "mid_Fir", "mid_Pine", "mid_Other",
+                    "mature", "mature_Fir", "mature_Pine", "mature_Other",
+                    "old", "old_Fir", "old_Pine", "old_Other")
+
 #' Create map of seral stage classes for BC forests
 #'
 #' Seral stages based on Table 7 of Cariboo regional Biodiversity Conservation Strategy Report,
@@ -69,7 +81,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   pixelGroupMap2[pgmByNdtbec$pixelID] <- pgmByNdtbec$newPixelGroup
 
   cohortData2 <- data.table::copy(cohortData)
-  cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup"]
+  cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup", allow.cartesian = TRUE]
 
   PgNdtBec <- c("newPixelGroup")
   SpPgNdtBec <- c("speciesCode", "newPixelGroup")
@@ -204,12 +216,14 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 100 & weightedAge < 250, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 250, SeralStage := "old"]
+  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir, SeralStage := paste0(SeralStage, "_Fir")]
 
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine, NDTBEC := paste0(NDTBEC, "_Pine")]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge < 40, SeralStage := "early"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 140, SeralStage := "old"]
+  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine, SeralStage := paste0(SeralStage, "_Pine")]
 
   ## 'other' matches pine group seral stages
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther, NDTBEC := paste0(NDTBEC, "_Other")]
@@ -217,6 +231,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
+  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine, SeralStage := paste0(SeralStage, "_Other")]
 
   ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omit?
   cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), SeralStage := "early"]
@@ -224,7 +239,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
 
   ## SeralStage needs to be a factor for rasterizedReduced
-  cohortData2[, SeralStage := factor(SeralStage, levels = c("early", "mid", "mature", "old"))]
+  cohortData2[, SeralStage := factor(SeralStage, levels = .seralStagesBC)]
 
   ## build seral stage map raster from cohortData2 and pixelGroupMap2
   ssm <- rasterizeReduced(cohortData2, pixelGroupMap2, "SeralStage", mapcode = "newPixelGroup")

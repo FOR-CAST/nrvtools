@@ -382,7 +382,7 @@ summarizePatchMetricsSeral <- function(ptch_stat_df) {
   summary_df <- lapply(names(summary_df), function(f) {
     df <- summary_df[[f]] |>
       dplyr::mutate(class = as.factor(class))
-    levels(df$class) <- c("early", "mid", "mature", "old")
+    levels(df$class) <- .seralStagesBC
 
     return(df)
   })

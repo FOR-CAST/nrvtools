@@ -1,3 +1,7 @@
+# nrvtools 0.0.17
+
+- improve handling of IDT4 seral stages in `seralStageMapGeneratorBC()`;
+
 # nrvtools 0.0.16
 
 - split summary table creation from `calculatePatchMetrics()` and `calculatePatchMetricsSeral()` to allow for saving of the full data.frame;

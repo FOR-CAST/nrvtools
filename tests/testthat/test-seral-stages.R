@@ -4,7 +4,7 @@ test_that("BC seral stage calculations work", {
   skip_if_not_installed("map")
   skip_if_not_installed("withr")
 
-  run <- 1L
+  run <- 8L
   outputDir <- file.path("~/GitHub/BC_HRV/outputs",
                          "NRD_Quesnel_scfm_hrv_FRT_res125",
                          sprintf("rep%02d", run))
@@ -43,11 +43,12 @@ test_that("BC seral stage calculations work", {
 
   areas_df <- lapply(seq_along(years), function(yr) {
     ssm <- seralStageMapGeneratorBC(fcd[yr], fpgm[yr], fNDTBEC)
+    expect_true(all(levels(ssm)[[1]][["values"]] %in% .seralStagesBC))
 
     areas <- patchAreasSeral(ssm) |>
       dplyr::mutate(rep = run, time = yr, poly = "NDTBEC")
 
-    expect_identical(unique(areas$class), c("early", "mid", "mature", "old"))
+    expect_true(all(unique(areas$class) %in% .seralStagesBC))
 
     return(areas)
   }) |>
@@ -68,7 +69,7 @@ test_that("BC seral stage calculations work", {
       ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
     ) |>
     dplyr::mutate(class = as.factor(class))
-  levels(summary_df$class) <- c("early", "mid", "mature", "old")
+  levels(summary_df$class) <- .seralStagesBC
 
   if (interactive()) {
     plot_by_class(dplyr::filter(summary_df, time > 0), type = "box", page = 1) +
