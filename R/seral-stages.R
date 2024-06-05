@@ -10,6 +10,7 @@ utils::globalVariables(c(
 #' "early_Pine", "mid_Pine", "mature_Pine", and "old_Pine" are for NDT4 with Pine leading;
 #' "early_Other", "mid_Other", "mature_Other", and "old_Other" are for NDT4 with Other leading.
 #'
+#' @keywords internal
 .seralStagesBC <- c("early", "early_Fir", "early_Pine", "early_Other",
                     "mid", "mid_Fir", "mid_Pine", "mid_Other",
                     "mature", "mature_Fir", "mature_Pine", "mature_Other",
@@ -81,7 +82,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   pixelGroupMap2[pgmByNdtbec$pixelID] <- pgmByNdtbec$newPixelGroup
 
   cohortData2 <- data.table::copy(cohortData)
-  cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup", allow.cartesian = TRUE]
+  cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup"]
 
   PgNdtBec <- c("newPixelGroup")
   SpPgNdtBec <- c("speciesCode", "newPixelGroup")

@@ -1,3 +1,7 @@
+# nrvtools 0.0.18
+
+- improved seral stage calculations;
+
 # nrvtools 0.0.17
 
 - improve handling of IDT4 seral stages in `seralStageMapGeneratorBC()`;

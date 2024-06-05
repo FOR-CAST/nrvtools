@@ -16,4 +16,4 @@ An object of class \code{character} of length 16.
 "early_Pine", "mid_Pine", "mature_Pine", and "old_Pine" are for NDT4 with Pine leading;
 "early_Other", "mid_Other", "mature_Other", and "old_Other" are for NDT4 with Other leading.
 }
-\keyword{datasets}
+\keyword{internal}
