@@ -20,6 +20,7 @@ test_that("BC seral stage calculations work", {
   NDTBEC <- suppressWarnings({
     sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea3)
   })
+  rm(ml)
 
   fNDTBEC <- file.path(test_dir, "NDTBEC.shp")
   sf::st_write(NDTBEC, fNDTBEC, append = FALSE, quiet = TRUE)
@@ -46,7 +47,7 @@ test_that("BC seral stage calculations work", {
     expect_true(all(levels(ssm)[[1]][["values"]] %in% .seralStagesBC))
 
     areas <- patchAreasSeral(ssm) |>
-      dplyr::mutate(rep = run, time = yr, poly = "NDTBEC")
+      dplyr::mutate(rep = run, time = years[yr], poly = "NDTBEC")
 
     expect_true(all(unique(areas$class) %in% .seralStagesBC))
 
@@ -68,14 +69,16 @@ test_that("BC seral stage calculations work", {
       se = ifelse(N > 0, sd / sqrt(N), NA_real_),
       ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
     ) |>
-    dplyr::mutate(class = as.factor(class))
-  levels(summary_df$class) <- .seralStagesBC
+    dplyr::mutate(class = factor(class, levels = .seralStagesBC))
 
   if (interactive()) {
+    withr::local_package("ggplot2")
+
     plot_by_class(dplyr::filter(summary_df, time > 0), type = "box", page = 1) +
       geom_point(data = dplyr::filter(summary_df, time == 0), col = "darkred", size = 2.5)
 
-    plot_over_time_by_class(dplyr::filter(summary_df, time > 0), ylabel = "Mean area (ha)", page = 1)
+    plot_over_time_by_class(dplyr::filter(summary_df, time > 0), ylabel = "Mean area (ha)", page = 1) +
+      facet_wrap(~ class)
   }
 
   withr::deferred_run()
@@ -180,6 +183,8 @@ test_that("BC seral stage calculations work in parallel", {
   expect_true(all(NDTBEC$NDTBEC %in% unique(sdfl$patchAreasSeral$poly)))
 
   if (interactive()) {
+    withr::local_package("ggplot2")
+
     plot_by_class(sdfl$patchAreasSeral, type = "box", page = 1) +
       geom_point(data = sdfl_cc$patchAreasSeral, col = "darkred", size = 2.5)
 

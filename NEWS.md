@@ -1,3 +1,7 @@
+# nrvtools 0.0.19
+
+- fixed issue with factor levels in seral stage summary calculations;
+
 # nrvtools 0.0.18
 
 - improved seral stage calculations;
