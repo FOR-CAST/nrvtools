@@ -232,7 +232,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine, SeralStage := paste0(SeralStage, "_Other")]
+  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther, SeralStage := paste0(SeralStage, "_Other")]
 
   ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omit?
   cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), SeralStage := "early"]

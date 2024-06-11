@@ -16,9 +16,9 @@ test_that("BC seral stage calculations work", {
   withr::local_dir(test_dir)
 
   ml <- readRDS(file.path(outputDir, "ml_preamble.rds"))
-  studyArea3 <- map::studyArea(ml, 3)
+  studyArea2 <- map::studyArea(ml, 2)
   NDTBEC <- suppressWarnings({
-    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea3)
+    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea2)
   })
   rm(ml)
 
@@ -108,9 +108,9 @@ test_that("BC seral stage calculations work in parallel", {
   withr::local_dir(test_dir)
 
   ml <- readRDS(file.path(outputDirs[1], "ml_preamble.rds"))
-  studyArea3 <- map::studyArea(ml, 3)
+  studyArea2 <- map::studyArea(ml, 2)
   NDTBEC <- suppressWarnings({
-    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea3)
+    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea2)
   })
 
   fNDTBEC <- file.path(test_dir, "NDTBEC.shp")
@@ -154,7 +154,7 @@ test_that("BC seral stage calculations work in parallel", {
   rptPoly <- rptPolygons[[p]]
 
   rptPoly <- suppressWarnings({
-    sf::st_crop(rptPoly, studyArea3) ## ensure cropped to studyArea
+    sf::st_crop(rptPoly, studyArea2) ## ensure cropped to studyArea
   })
   rptPolyCol <- md[layerName == p, ][["columnNameForLabels"]]
   refCode <- paste0("sspm_", md[layerName == p, ][["shortName"]])
