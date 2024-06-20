@@ -4,10 +4,14 @@ test_that("BC seral stage calculations work", {
   skip_if_not_installed("map")
   skip_if_not_installed("withr")
 
-  run <- 8L
+  run <- 1L
   outputDir <- file.path("~/GitHub/BC_HRV/outputs",
-                         "NRD_Quesnel_scfm_hrv_FRT_res125",
+                         "NRD_Quesnel_scfm_LH_hrv_ECODISTRICT_res125",
                          sprintf("rep%02d", run))
+  # run <- 8L
+  # outputDir <- file.path("~/GitHub/BC_HRV/outputs",
+  #                        "NRD_Quesnel_scfm_hrv_FRT_res125",
+  #                        sprintf("rep%02d", run))
 
   skip_if_not(all(dir.exists(outputDir)))
 
@@ -15,10 +19,10 @@ test_that("BC seral stage calculations work", {
   dir.create(test_dir, showWarnings = FALSE)
   withr::local_dir(test_dir)
 
-  ml <- readRDS(file.path(outputDir, "ml_preamble.rds"))
-  studyArea2 <- map::studyArea(ml, 2)
+  ml <- readRDS(file.path(dirname(outputDir), "ml_preamble.rds"))
+  studyArea3 <- map::studyArea(ml, 3)
   NDTBEC <- suppressWarnings({
-    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea2)
+    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea3)
   })
   rm(ml)
 
@@ -94,8 +98,11 @@ test_that("BC seral stage calculations work in parallel", {
 
   runs <- 1L:3L
   outputDirs <- file.path("~/GitHub/BC_HRV/outputs",
-                          "NRD_Quesnel_scfm_hrv_FRT_res125",
-                          sprintf("rep%02d", runs))
+                         "NRD_Quesnel_scfm_LH_hrv_ECODISTRICT_res125",
+                         sprintf("rep%02d", runs))
+  # outputDirs <- file.path("~/GitHub/BC_HRV/outputs",
+  #                         "NRD_Quesnel_scfm_hrv_FRT_res125",
+  #                         sprintf("rep%02d", runs))
 
   skip_if_not(all(dir.exists(outputDirs)))
 
@@ -107,10 +114,10 @@ test_that("BC seral stage calculations work in parallel", {
   dir.create(test_dir, showWarnings = FALSE)
   withr::local_dir(test_dir)
 
-  ml <- readRDS(file.path(outputDirs[1], "ml_preamble.rds"))
-  studyArea2 <- map::studyArea(ml, 2)
+  ml <- readRDS(file.path(dirname(outputDirs[1]), "ml_preamble.rds"))
+  studyArea3 <- map::studyArea(ml, 3)
   NDTBEC <- suppressWarnings({
-    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea2)
+    sf::st_crop(ml$`ecoregionLayer (NDTxBEC)`, studyArea3)
   })
 
   fNDTBEC <- file.path(test_dir, "NDTBEC.shp")
@@ -154,7 +161,7 @@ test_that("BC seral stage calculations work in parallel", {
   rptPoly <- rptPolygons[[p]]
 
   rptPoly <- suppressWarnings({
-    sf::st_crop(rptPoly, studyArea2) ## ensure cropped to studyArea
+    sf::st_crop(rptPoly, studyArea3) ## ensure cropped to studyArea
   })
   rptPolyCol <- md[layerName == p, ][["columnNameForLabels"]]
   refCode <- paste0("sspm_", md[layerName == p, ][["shortName"]])

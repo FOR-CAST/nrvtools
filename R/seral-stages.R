@@ -48,20 +48,21 @@ utils::globalVariables(c(
 #' }
 #' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
+  fndtbec <- ndtbec
   stopifnot(
     is.character(cd) && file.exists(cd),
     is.character(pgm) && file.exists(pgm),
-    is.character(ndtbec) && file.exists(ndtbec)
+    is.character(fndtbec) && file.exists(fndtbec)
   )
   cohortData <- qs::qread(cd)
   pixelGroupMap <- terra::rast(pgm)
-  NDTBEC <- sf::st_read(ndtbec, quiet = TRUE)
+  NDTBEC <- sf::st_read(fndtbec, quiet = TRUE)
 
   rstNDTBEC <- terra::rasterize(NDTBEC, pixelGroupMap, "NDTBEC")
   assertthat::assert_that(terra::compareGeom(rstNDTBEC, pixelGroupMap))
 
   lvls <- terra::levels(rstNDTBEC)[[1]]
-  idcol <- which(grepl("id|ID", names(lvls)))
+  idcol <- which(grepl("id", names(lvls), ignore.case = TRUE))
   ndtbec <- lvls[match(values(rstNDTBEC, mat = FALSE), lvls[[idcol]]), "NDTBEC"]
   assertthat::assert_that(terra::ncell(pixelGroupMap) == length(ndtbec))
 
@@ -73,7 +74,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
     na.omit("pixelGroup")
   pgmByNdtbec <- pgmByNdtbec[pixelGroup > 0, ] |> unique()
 
-  ## reassign pixelGoup ids to account for NDTBEC
+  ## reassign pixelGroup ids to account for NDTBEC
   pgmByNdtbec[, newPixelGroup := .I]
   nrows <- NROW(pgmByNdtbec)
   assertthat::assert_that(identical(nrows, length(unique(pgmByNdtbec$pixelID))))
@@ -82,15 +83,16 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   pixelGroupMap2[pgmByNdtbec$pixelID] <- pgmByNdtbec$newPixelGroup
 
   cohortData2 <- data.table::copy(cohortData)
-  cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup"]
+  cohortData2 <- cohortData2[pgmByNdtbec, on = "pixelGroup", allow.cartesian = TRUE] ## TODO
 
-  PgNdtBec <- c("newPixelGroup")
-  SpPgNdtBec <- c("speciesCode", "newPixelGroup")
+  Pg <- c("newPixelGroup")
+  SpPg <- c("speciesCode", "newPixelGroup")
+  SpPgNdtBec <- c("speciesCode", "newPixelGroup", "NDTBEC")
 
   setkey(cohortData2, newPixelGroup)
-  cohortData2[, totalB := sum(B, na.rm = TRUE), by = PgNdtBec]
-  cohortData2[, propB := sum(B, na.rm = TRUE) / totalB[1], by = SpPgNdtBec]
-  cohortData2[, weightedAge := floor(sum(age * B) / sum(B) / 10) * 10, by = PgNdtBec]
+  cohortData2[, totalB := sum(B, na.rm = TRUE), by = Pg]
+  cohortData2[, propB := sum(B, na.rm = TRUE) / totalB[1], by = SpPg]
+  cohortData2[, weightedAge := floor(sum(age * B) / sum(B) / 10) * 10, by = Pg]
   for (col2rm in c("age", "aNPPAct", "B", "ecoregionGroup", "mortality", "totalB")) {
     if (col2rm %in% colnames(cohortData2)) {
       set(cohortData2, NULL, col2rm, NULL)
@@ -152,7 +154,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   cohortDataNDT4[, speciesCode := as.character(speciesCode)]
   cohortDataNDT4[grepl("^Pice_", speciesCode), speciesCode := "Pice_sp"]
-  cohortDataNDT4[grepl("^Pice_", speciesCode), propB := sum(propB, na.rm = TRUE), by = SpPgNdtBec]
+  cohortDataNDT4[grepl("^Pice_", speciesCode), propB := sum(propB, na.rm = TRUE), by = SpPg]
   cohortDataNDT4 <- unique(cohortDataNDT4)
 
   fulldt <- expand.grid(
@@ -168,7 +170,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortDataNDT4[is.na(propB.x), propB := propB.y]
   set(cohortDataNDT4, NULL, c("propB.x", "propB.y"), NULL)
 
-  cohortDataNDT4[, Rank := as.integer(rank(-propB, ties.method = "min")), by = PgNdtBec]
+  cohortDataNDT4[, Rank := as.integer(rank(-propB, ties.method = "min")), by = Pg]
 
   ## NOTE: 'leading' is simply most abundant species, but we'll use 0.5 here
   vegLeadingProportion <- 0.5
