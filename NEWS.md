@@ -1,3 +1,7 @@
+# nrvtools (development version)
+
+- move `qs` package to Suggests;
+
 # nrvtools 0.0.21
 
 - fixed issue with seral stage map generator;

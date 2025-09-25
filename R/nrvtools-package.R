@@ -54,7 +54,6 @@
 #' @importFrom landscapemetrics lsm_p_area
 #' @importFrom pemisc optimalClusterNum
 #' @importFrom purrr transpose
-#' @importFrom qs qread
 #' @importFrom raster crop
 #' @importFrom raster levels
 #' @importFrom raster mask

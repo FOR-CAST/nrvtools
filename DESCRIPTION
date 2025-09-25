@@ -1,7 +1,7 @@
 Package: nrvtools
 Title: Tools for Summarizing Outputs From Natural Range of Variability
     Simulations
-Version: 0.0.21
+Version: 0.0.21.9000
 Authors@R: 
     person(c("Alex", "M"), "Chubaty", , "achubaty@for-cast.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7146-8135"))
@@ -21,7 +21,6 @@ Imports:
     methods,
     pemisc,
     purrr,
-    qs,
     raster,
     sf,
     SpaDES.tools,
@@ -34,6 +33,7 @@ Suggests:
     future,
     future.callr,
     map,
+    qs,
     testthat (>= 3.0.0),
     withr
 Remotes:

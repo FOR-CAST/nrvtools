@@ -73,6 +73,8 @@ utils::globalVariables(c(
 #' }
 #' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
+  stopifnot(requireNamespace("qs", quietly = TRUE))
+
   fndtbec <- ndtbec
   stopifnot(
     is.character(cd) && file.exists(cd),
