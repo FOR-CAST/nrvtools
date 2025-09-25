@@ -18,16 +18,16 @@
 #' @rdname default_metrics
 default_landscape_metrics <- function() {
   list(
-    "lsm_l_area_mn",  ## mean patch area
-    "lsm_l_area_sd",  ## standard deviation of patch area
-    "lsm_l_ai",       ## aggregation index
+    "lsm_l_area_mn", ## mean patch area
+    "lsm_l_area_sd", ## standard deviation of patch area
+    "lsm_l_ai", ## aggregation index
     "lsm_l_cohesion", ## cohesion index
-    "lsm_l_condent",  ## conditional entropy
-    "lsm_l_core_cv",  ## coeff var of core area
-    "lsm_l_core_mn",  ## mean core area
-    "lsm_l_core_sd",  ## std dev of core area
-    "lsm_l_ed",       ## edge density
-    "lsm_l_iji"       ## interspersion and juxtaposition index
+    "lsm_l_condent", ## conditional entropy
+    "lsm_l_core_cv", ## coeff var of core area
+    "lsm_l_core_mn", ## mean core area
+    "lsm_l_core_sd", ## std dev of core area
+    "lsm_l_ed", ## edge density
+    "lsm_l_iji" ## interspersion and juxtaposition index
   )
 }
 

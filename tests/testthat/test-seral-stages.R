@@ -5,9 +5,11 @@ test_that("BC seral stage calculations work", {
   skip_if_not_installed("withr")
 
   run <- 1L
-  outputDir <- file.path("~/GitHub/BC_HRV/outputs",
-                         "NRD_Quesnel_scfm_LH_hrv_ECODISTRICT_res125",
-                         sprintf("rep%02d", run))
+  outputDir <- file.path(
+    "~/GitHub/BC_HRV/outputs",
+    "NRD_Quesnel_scfm_LH_hrv_ECODISTRICT_res125",
+    sprintf("rep%02d", run)
+  )
   # run <- 8L
   # outputDir <- file.path("~/GitHub/BC_HRV/outputs",
   #                        "NRD_Quesnel_scfm_hrv_FRT_res125",
@@ -32,13 +34,23 @@ test_that("BC seral stage calculations work", {
 
   years <- c(0, 800, 1000, 1200) ## year 0 has no pixelGroup 0 values; other years do.
 
-  fcd <- vapply(outputDir, function(d) {
-    file.path(d, sprintf("cohortData_year%04d.qs", years))
-  }, character(length(years))) |> as.vector()
+  fcd <- vapply(
+    outputDir,
+    function(d) {
+      file.path(d, sprintf("cohortData_year%04d.qs", years))
+    },
+    character(length(years))
+  ) |>
+    as.vector()
 
-  fpgm <- vapply(outputDir, function(d) {
-    file.path(d, sprintf("pixelGroupMap_year%04d.tif", years))
-  }, character(length(years))) |> as.vector()
+  fpgm <- vapply(
+    outputDir,
+    function(d) {
+      file.path(d, sprintf("pixelGroupMap_year%04d.tif", years))
+    },
+    character(length(years))
+  ) |>
+    as.vector()
 
   repDirs <- file.path(test_dir, basename(dirname(fpgm))) |> unique()
   expect_true(all(vapply(repDirs, dir.create, recursive = TRUE, logical(1))))
@@ -81,8 +93,12 @@ test_that("BC seral stage calculations work", {
     plot_by_class(dplyr::filter(summary_df, time > 0), type = "box", page = 1) +
       geom_point(data = dplyr::filter(summary_df, time == 0), col = "darkred", size = 2.5)
 
-    plot_over_time_by_class(dplyr::filter(summary_df, time > 0), ylabel = "Mean area (ha)", page = 1) +
-      facet_wrap(~ class)
+    plot_over_time_by_class(
+      dplyr::filter(summary_df, time > 0),
+      ylabel = "Mean area (ha)",
+      page = 1
+    ) +
+      facet_wrap(~class)
   }
 
   withr::deferred_run()
@@ -97,9 +113,11 @@ test_that("BC seral stage calculations work in parallel", {
   skip_if_not_installed("withr")
 
   runs <- 1L:3L
-  outputDirs <- file.path("~/GitHub/BC_HRV/outputs",
-                         "NRD_Quesnel_scfm_LH_hrv_ECODISTRICT_res125",
-                         sprintf("rep%02d", runs))
+  outputDirs <- file.path(
+    "~/GitHub/BC_HRV/outputs",
+    "NRD_Quesnel_scfm_LH_hrv_ECODISTRICT_res125",
+    sprintf("rep%02d", runs)
+  )
   # outputDirs <- file.path("~/GitHub/BC_HRV/outputs",
   #                         "NRD_Quesnel_scfm_hrv_FRT_res125",
   #                         sprintf("rep%02d", runs))
@@ -126,13 +144,23 @@ test_that("BC seral stage calculations work in parallel", {
 
   years <- c(0, 800, 1000, 1200) ## year 0 has no pixelGroup 0 values; other years do.
 
-  fcd <- vapply(outputDirs, function(d) {
-    file.path(d, sprintf("cohortData_year%04d.qs", years))
-  }, character(length(years))) |> as.vector()
+  fcd <- vapply(
+    outputDirs,
+    function(d) {
+      file.path(d, sprintf("cohortData_year%04d.qs", years))
+    },
+    character(length(years))
+  ) |>
+    as.vector()
 
-  fpgm <- vapply(outputDirs, function(d) {
-    file.path(d, sprintf("pixelGroupMap_year%04d.tif", years))
-  }, character(length(years))) |> as.vector()
+  fpgm <- vapply(
+    outputDirs,
+    function(d) {
+      file.path(d, sprintf("pixelGroupMap_year%04d.tif", years))
+    },
+    character(length(years))
+  ) |>
+    as.vector()
 
   repDirs <- file.path(test_dir, basename(dirname(fpgm))) |> unique()
   expect_true(all(vapply(repDirs, dir.create, recursive = TRUE, logical(1))))
@@ -168,9 +196,13 @@ test_that("BC seral stage calculations work in parallel", {
   refCodeCC <- paste0(refCode, "_CC")
 
   ## CC
-  dfl_cc <- calculatePatchMetricsSeral(ssm = fssm0, flm = fflm,
-                                       summaryPolys = rptPoly, polyCol = rptPolyCol,
-                                       funList = funList)
+  dfl_cc <- calculatePatchMetricsSeral(
+    ssm = fssm0,
+    flm = fflm,
+    summaryPolys = rptPoly,
+    polyCol = rptPolyCol,
+    funList = funList
+  )
   expect_true(all(NDTBEC$NDTBEC %in% unique(dfl_cc$patchAreasSeral$poly)))
 
   sdfl_cc <- suppressWarnings({
@@ -179,9 +211,13 @@ test_that("BC seral stage calculations work in parallel", {
   expect_true(all(NDTBEC$NDTBEC %in% unique(sdfl_cc$patchAreasSeral$poly)))
 
   ## SIM
-  dfl <- calculatePatchMetricsSeral(ssm = fssm, flm = fflm,
-                                    summaryPolys = rptPoly, polyCol = rptPolyCol,
-                                    funList = funList)
+  dfl <- calculatePatchMetricsSeral(
+    ssm = fssm,
+    flm = fflm,
+    summaryPolys = rptPoly,
+    polyCol = rptPolyCol,
+    funList = funList
+  )
   expect_true(all(NDTBEC$NDTBEC %in% unique(dfl$patchAreasSeral$poly)))
 
   sdfl <- suppressWarnings({

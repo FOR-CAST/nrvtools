@@ -1,5 +1,10 @@
 utils::globalVariables(c(
-  "N", "poly", "sd", "se", "time", "value"
+  "N",
+  "poly",
+  "sd",
+  "se",
+  "time",
+  "value"
 ))
 
 #' Calculate landscape metrics
@@ -16,8 +21,9 @@ utils::globalVariables(c(
 #'
 #' @export
 calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL) {
-  if (!is(summaryPolys, "sf"))
+  if (!is(summaryPolys, "sf")) {
     summaryPolys <- sf::st_as_sf(summaryPolys)
+  }
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
@@ -26,26 +32,31 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL
   }
   names(funList) <- funList
 
-  fragStats <- future.apply::future_lapply(vtm, function(f) {
-    r <- terra::rast(f)
-    byPoly <- lapply(polyNames, function(polyName) {
-      subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
-      rc <- terra::crop(r, subpoly)
-      rcm <- terra::mask(rc, subpoly)
-      rcm
+  fragStats <- future.apply::future_lapply(
+    vtm,
+    function(f) {
+      r <- terra::rast(f)
+      byPoly <- lapply(polyNames, function(polyName) {
+        subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
+        rc <- terra::crop(r, subpoly)
+        rcm <- terra::mask(rc, subpoly)
+        rcm
 
-      out <- lapply(funList, function(fun) {
-        fn <- get(fun)
+        out <- lapply(funList, function(fun) {
+          fn <- get(fun)
 
-        fn(rcm)
+          fn(rcm)
+        })
+        names(out) <- funList
+        out
       })
-      names(out) <- funList
-      out
-    })
-    names(byPoly) <- paste(tools::file_path_sans_ext(basename(f)), polyNames , sep = "_") ## vegTypeMap_yearXXXX_polyName
+      names(byPoly) <- paste(tools::file_path_sans_ext(basename(f)), polyNames, sep = "_") ## vegTypeMap_yearXXXX_polyName
 
-    byPoly
-  }, future.packages = c("landscapemetrics", "nrvtools", "sf", "terra"), future.seed = TRUE)
+      byPoly
+    },
+    future.packages = c("landscapemetrics", "nrvtools", "sf", "terra"),
+    future.seed = TRUE
+  )
   names(fragStats) <- basename(dirname(vtm)) ## repXX
 
   fragStats <- purrr::transpose(lapply(fragStats, purrr::transpose)) ## puts fun names as outer list elements

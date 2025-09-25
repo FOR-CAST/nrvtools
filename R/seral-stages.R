@@ -1,6 +1,17 @@
 utils::globalVariables(c(
-  "age", "B", "NDTBEC", "newPixelGroup", "pixelGroup", "propB", "propB.x", "propB.y",
-  "Rank", "SeralStage", "speciesCode", "totalB", "weightedAge"
+  "age",
+  "B",
+  "NDTBEC",
+  "newPixelGroup",
+  "pixelGroup",
+  "propB",
+  "propB.x",
+  "propB.y",
+  "Rank",
+  "SeralStage",
+  "speciesCode",
+  "totalB",
+  "weightedAge"
 ))
 
 #' Seral stage classes for BC forests
@@ -11,10 +22,24 @@ utils::globalVariables(c(
 #' "early_Other", "mid_Other", "mature_Other", and "old_Other" are for NDT4 with Other leading.
 #'
 #' @keywords internal
-.seralStagesBC <- c("early", "early_Fir", "early_Pine", "early_Other",
-                    "mid", "mid_Fir", "mid_Pine", "mid_Other",
-                    "mature", "mature_Fir", "mature_Pine", "mature_Other",
-                    "old", "old_Fir", "old_Pine", "old_Other")
+.seralStagesBC <- c(
+  "early",
+  "early_Fir",
+  "early_Pine",
+  "early_Other",
+  "mid",
+  "mid_Fir",
+  "mid_Pine",
+  "mid_Other",
+  "mature",
+  "mature_Fir",
+  "mature_Pine",
+  "mature_Other",
+  "old",
+  "old_Fir",
+  "old_Pine",
+  "old_Other"
+)
 
 #' Create map of seral stage classes for BC forests
 #'
@@ -113,8 +138,14 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   ## NDT1
   cohortData2[NDTBEC %in% c("NDT1_ESSF", "NDT1_MH") & weightedAge < 40, SeralStage := "early"]
-  cohortData2[NDTBEC %in% c("NDT1_ESSF", "NDT1_MH") & weightedAge >= 40 & weightedAge < 120, SeralStage := "mid"]
-  cohortData2[NDTBEC %in% c("NDT1_ESSF", "NDT1_MH") & weightedAge >= 120 & weightedAge < 250, SeralStage := "mature"]
+  cohortData2[
+    NDTBEC %in% c("NDT1_ESSF", "NDT1_MH") & weightedAge >= 40 & weightedAge < 120,
+    SeralStage := "mid"
+  ]
+  cohortData2[
+    NDTBEC %in% c("NDT1_ESSF", "NDT1_MH") & weightedAge >= 120 & weightedAge < 250,
+    SeralStage := "mature"
+  ]
   cohortData2[NDTBEC %in% c("NDT1_ESSF", "NDT1_MH") & weightedAge >= 250, SeralStage := "old"]
 
   cohortData2[NDTBEC == "NDT1_ICH" & weightedAge < 40, SeralStage := "early"]
@@ -130,18 +161,30 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   cohortData2[NDTBEC == "NDT2_ESSF" & weightedAge < 40, SeralStage := "early"]
   cohortData2[NDTBEC == "NDT2_ESSF" & weightedAge >= 40 & weightedAge < 120, SeralStage := "mid"]
-  cohortData2[NDTBEC == "NDT2_ESSF" & weightedAge >= 120 & weightedAge < 250, SeralStage := "mature"]
+  cohortData2[
+    NDTBEC == "NDT2_ESSF" & weightedAge >= 120 & weightedAge < 250,
+    SeralStage := "mature"
+  ]
   cohortData2[NDTBEC == "NDT2_ESSF" & weightedAge >= 250, SeralStage := "old"]
 
   cohortData2[NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge < 40, SeralStage := "early"]
-  cohortData2[NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge >= 100 & weightedAge < 250, SeralStage := "mature"]
+  cohortData2[
+    NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge >= 40 & weightedAge < 100,
+    SeralStage := "mid"
+  ]
+  cohortData2[
+    NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge >= 100 & weightedAge < 250,
+    SeralStage := "mature"
+  ]
   cohortData2[NDTBEC %in% c("NDT2_ICH", "NDT2_SBS") & weightedAge >= 250, SeralStage := "old"]
 
   ## NDT3
   cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge < 40, SeralStage := "early"]
   cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
+  cohortData2[
+    grepl("^NDT3_", NDTBEC) & weightedAge >= 100 & weightedAge < 140,
+    SeralStage := "mature"
+  ]
   cohortData2[grepl("^NDT3_", NDTBEC) & weightedAge >= 140, SeralStage := "old"]
 
   ## NDT4 -- requires further specification by Pine / Fir group before assigning seral stages
@@ -162,7 +205,8 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
     newPixelGroup = unique(cohortDataNDT4$newPixelGroup),
     NDTBEC = unique(cohortDataNDT4$NDTBEC),
     stringsAsFactors = FALSE
-  ) |> as.data.table()
+  ) |>
+    as.data.table()
   fulldt[, propB := 0.0]
 
   cohortDataNDT4 <- merge(cohortDataNDT4, fulldt, by = SpPgNdtBec, all = TRUE)
@@ -175,16 +219,30 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   ## NOTE: 'leading' is simply most abundant species, but we'll use 0.5 here
   vegLeadingProportion <- 0.5
 
-  pgFir1 <- cohortDataNDT4[speciesCode == "Pseu_men" & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgFir2 <- cohortDataNDT4[speciesCode == "Pinu_pon" & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgFir3 <- cohortDataNDT4[speciesCode == "Pinu_con" & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-  pgFir3 <- cohortDataNDT4[(newPixelGroup %in% pgFir3) &
-                             (speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB > 0.15), ]$newPixelGroup
-  pgFir4 <- cohortDataNDT4[(speciesCode == "Popu_tre" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
-  pgFir4 <- cohortDataNDT4[(newPixelGroup %in% pgFir4) &
-                             (speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB > 0.15), ]$newPixelGroup
-  pgFir4 <- cohortDataNDT4[(newPixelGroup %in% pgFir4) &
-                             (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB < 0.06), ]$newPixelGroup
+  pgFir1 <- cohortDataNDT4[
+    speciesCode == "Pseu_men" & Rank == 1 & propB >= vegLeadingProportion,
+  ]$newPixelGroup
+  pgFir2 <- cohortDataNDT4[
+    speciesCode == "Pinu_pon" & Rank == 1 & propB >= vegLeadingProportion,
+  ]$newPixelGroup
+  pgFir3 <- cohortDataNDT4[
+    speciesCode == "Pinu_con" & Rank == 1 & propB >= vegLeadingProportion,
+  ]$newPixelGroup
+  pgFir3 <- cohortDataNDT4[
+    (newPixelGroup %in% pgFir3) &
+      (speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB > 0.15),
+  ]$newPixelGroup
+  pgFir4 <- cohortDataNDT4[
+    (speciesCode == "Popu_tre" & Rank == 1 & propB >= vegLeadingProportion),
+  ]$newPixelGroup
+  pgFir4 <- cohortDataNDT4[
+    (newPixelGroup %in% pgFir4) &
+      (speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB > 0.15),
+  ]$newPixelGroup
+  pgFir4 <- cohortDataNDT4[
+    (newPixelGroup %in% pgFir4) &
+      (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB < 0.06),
+  ]$newPixelGroup
   pgFir <- c(pgFir1, pgFir2, pgFir3, pgFir4) |> unique()
 
   ## 2024-05-02 everything else not in fir group is in pine group; keep old code for now
@@ -192,18 +250,36 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   if (FALSE) {
     ## TODO: this does not catch all possible non-fir species combinations
-    pgPine1 <- cohortDataNDT4[(speciesCode == "Pinu_con" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
-    pgPine1 <- cohortDataNDT4[(newPixelGroup %in% pgPine1) & (speciesCode == "Pinu_pon" & propB <= 0.15), ]$newPixelGroup
-    pgPine1 <- cohortDataNDT4[(newPixelGroup %in% pgPine1) & (speciesCode == "Pseu_men" & propB <= 0.15), ]$newPixelGroup
+    pgPine1 <- cohortDataNDT4[
+      (speciesCode == "Pinu_con" & Rank == 1 & propB >= vegLeadingProportion),
+    ]$newPixelGroup
+    pgPine1 <- cohortDataNDT4[
+      (newPixelGroup %in% pgPine1) & (speciesCode == "Pinu_pon" & propB <= 0.15),
+    ]$newPixelGroup
+    pgPine1 <- cohortDataNDT4[
+      (newPixelGroup %in% pgPine1) & (speciesCode == "Pseu_men" & propB <= 0.15),
+    ]$newPixelGroup
 
-    pgPine2 <- cohortDataNDT4[(speciesCode == "Popu_tre" & Rank == 1 & propB >= vegLeadingProportion), ]$newPixelGroup
-    pgPine2 <- cohortDataNDT4[(newPixelGroup %in% pgPine2) &
-                                ((speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB <= 0.15) |
-                                   (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB >= 0.06)), ]$newPixelGroup
-    pgPine3 <- cohortDataNDT4[grepl("^Pice_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-    pgPine4 <- cohortDataNDT4[grepl("^Thuj_pli", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-    pgPine5 <- cohortDataNDT4[grepl("^Popu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
-    pgPine6 <- cohortDataNDT4[grepl("^Betu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion, ]$newPixelGroup
+    pgPine2 <- cohortDataNDT4[
+      (speciesCode == "Popu_tre" & Rank == 1 & propB >= vegLeadingProportion),
+    ]$newPixelGroup
+    pgPine2 <- cohortDataNDT4[
+      (newPixelGroup %in% pgPine2) &
+        ((speciesCode %in% c("Pinu_pon", "Pseu_men") & Rank > 1 & propB <= 0.15) |
+          (grepl("^(Betu_sp|Pice_sp|Popu_sp|Thuj_pli)", speciesCode) & Rank > 1 & propB >= 0.06)),
+    ]$newPixelGroup
+    pgPine3 <- cohortDataNDT4[
+      grepl("^Pice_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion,
+    ]$newPixelGroup
+    pgPine4 <- cohortDataNDT4[
+      grepl("^Thuj_pli", speciesCode) & Rank == 1 & propB >= vegLeadingProportion,
+    ]$newPixelGroup
+    pgPine5 <- cohortDataNDT4[
+      grepl("^Popu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion,
+    ]$newPixelGroup
+    pgPine6 <- cohortDataNDT4[
+      grepl("^Betu_sp", speciesCode) & Rank == 1 & propB >= vegLeadingProportion,
+    ]$newPixelGroup
     pgPine <- c(pgPine1, pgPine2, pgPine3, pgPine4, pgPine5, pgPine6)
   }
 
@@ -215,26 +291,74 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   pgOther <- pgNDT4[!pgNDT4 %in% c(pgFir, pgPine)]
 
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir, NDTBEC := paste0(NDTBEC, "_Fir")]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge < 40, SeralStage := "early"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 100 & weightedAge < 250, SeralStage := "mature"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 250, SeralStage := "old"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir, SeralStage := paste0(SeralStage, "_Fir")]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge < 40,
+    SeralStage := "early"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 40 & weightedAge < 100,
+    SeralStage := "mid"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 100 & weightedAge < 250,
+    SeralStage := "mature"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir & weightedAge >= 250,
+    SeralStage := "old"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgFir,
+    SeralStage := paste0(SeralStage, "_Fir")
+  ]
 
   cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine, NDTBEC := paste0(NDTBEC, "_Pine")]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge < 40, SeralStage := "early"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 140, SeralStage := "old"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine, SeralStage := paste0(SeralStage, "_Pine")]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge < 40,
+    SeralStage := "early"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 40 & weightedAge < 100,
+    SeralStage := "mid"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 100 & weightedAge < 140,
+    SeralStage := "mature"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine & weightedAge >= 140,
+    SeralStage := "old"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgPine,
+    SeralStage := paste0(SeralStage, "_Pine")
+  ]
 
   ## 'other' matches pine group seral stages
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther, NDTBEC := paste0(NDTBEC, "_Other")]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge < 40, SeralStage := "early"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 40 & weightedAge < 100, SeralStage := "mid"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140, SeralStage := "mature"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140, SeralStage := "old"]
-  cohortData2[grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther, SeralStage := paste0(SeralStage, "_Other")]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther,
+    NDTBEC := paste0(NDTBEC, "_Other")
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge < 40,
+    SeralStage := "early"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 40 & weightedAge < 100,
+    SeralStage := "mid"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 100 & weightedAge < 140,
+    SeralStage := "mature"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther & weightedAge >= 140,
+    SeralStage := "old"
+  ]
+  cohortData2[
+    grepl("NDT4", NDTBEC) & newPixelGroup %in% pgOther,
+    SeralStage := paste0(SeralStage, "_Other")
+  ]
 
   ## TODO: some rows have B == 0 | age == 0. set to 'early' as though recently disturbed? or omit?
   cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), SeralStage := "early"]
@@ -263,7 +387,12 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 #'
 #' @export
 #' @rdname seralStageMapGeneratorBC
-writeSeralStageMapBC <- function(cd, pgm, ndtbec, ssm = sub("pixelGroupMap", "seralStageMap", pgm)) {
+writeSeralStageMapBC <- function(
+  cd,
+  pgm,
+  ndtbec,
+  ssm = sub("pixelGroupMap", "seralStageMap", pgm)
+) {
   ## TODO: very slow; ¿because of automatic serializing of objs in the FUN envir?
   ## see <https://github.com/HenrikBengtsson/future.apply/issues/98>
   ## and <https://github.com/HenrikBengtsson/future/issues/608>
@@ -280,5 +409,6 @@ writeSeralStageMapBC <- function(cd, pgm, ndtbec, ssm = sub("pixelGroupMap", "se
     MoreArgs = list(ndtbec = ndtbec),
     future.globals = FALSE,
     future.packages = c("nrvtools", "terra")
-  ) |> unname()
+  ) |>
+    unname()
 }

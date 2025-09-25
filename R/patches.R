@@ -1,5 +1,15 @@
 utils::globalVariables(c(
-  "class", "id", "layer", "level", "metric", "N", "poly", "sd",  "se", "time", "value"
+  "class",
+  "id",
+  "layer",
+  "level",
+  "metric",
+  "N",
+  "poly",
+  "sd",
+  "se",
+  "time",
+  "value"
 ))
 
 #' Calculate areas for each patch (per species)
@@ -99,8 +109,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
   t <- raster::raster(sam)
   v <- raster::raster(vtm)
   byPoly <- lapply(polyNames, function(polyName) {
-    message(paste("  vtm:", basename(vtm), "\n",
-                  "  sam:", basename(sam)))
+    message(paste("  vtm:", basename(vtm), "\n", "  sam:", basename(sam)))
     subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
 
     fc <- raster::crop(f, subpoly)
@@ -129,7 +138,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
     names(out) <- funList
     out
   })
-  names(byPoly) <- paste(tools::file_path_sans_ext(basename(vtm)), polyNames , sep = "_") ## vegTypeMap_yearXXXX_polyName
+  names(byPoly) <- paste(tools::file_path_sans_ext(basename(vtm)), polyNames, sep = "_") ## vegTypeMap_yearXXXX_polyName
 
   byPoly
 }
@@ -199,8 +208,9 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 #' @export
 #' @seealso [calculatePatchMetricsSeral()]
 calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList = NULL) {
-  if (!is(summaryPolys, "sf"))
+  if (!is(summaryPolys, "sf")) {
     summaryPolys <- sf::st_as_sf(summaryPolys)
+  }
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
@@ -210,7 +220,9 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
   names(funList) <- funList
 
   ptch_stats <- future.apply::future_mapply(
-    patchStats, vtm = vtm, sam = sam,
+    patchStats,
+    vtm = vtm,
+    sam = sam,
     MoreArgs = list(
       flm = flm,
       polyCol = polyCol,
@@ -248,14 +260,22 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
     vtmTimes <- as.integer(gsub("year", "", labels2a2))
     vtmStudyAreas <- labels2a3
 
-    do.call(rbind, lapply(seq_along(x), function(i) {
-      if (nrow(x[[i]]) == 0) {
-        x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
-                             id = integer(0), metric = character(0), value = numeric(0))
-
-      }
-      dplyr::mutate(x[[i]], rep = vtmReps[i], time = vtmTimes[i], poly = vtmStudyAreas[i])
-    }))
+    do.call(
+      rbind,
+      lapply(seq_along(x), function(i) {
+        if (nrow(x[[i]]) == 0) {
+          x[[i]] <- data.frame(
+            layer = integer(0),
+            level = character(0),
+            class = character(0),
+            id = integer(0),
+            metric = character(0),
+            value = numeric(0)
+          )
+        }
+        dplyr::mutate(x[[i]], rep = vtmReps[i], time = vtmTimes[i], poly = vtmStudyAreas[i])
+      })
+    )
   })
   names(ptch_stat_df) <- funList
 
@@ -355,20 +375,29 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
     } else if (length(labels2a) == 4) {
       paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
     } else {
-      stop("polyName contains too many underscores")
+      stop("polyName contains too many underscores") ## TODO: improve label extraction to be less fragile
     }
 
     ssmReps <- as.integer(gsub("rep", "", labels1))
     ssmTimes <- as.integer(gsub("year", "", labels2a2))
     ssmStudyAreas <- labels2a3
 
-    do.call(rbind, lapply(seq_along(x), function(i) {
-      if (nrow(x[[i]]) == 0) {
-        x[[i]] <- data.frame(layer = integer(0), level = character(0), class = character(0),
-                             id = integer(0), metric = character(0), value = numeric(0))
-      }
-      dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i])
-    }))
+    do.call(
+      rbind,
+      lapply(seq_along(x), function(i) {
+        if (nrow(x[[i]]) == 0) {
+          x[[i]] <- data.frame(
+            layer = integer(0),
+            level = character(0),
+            class = character(0),
+            id = integer(0),
+            metric = character(0),
+            value = numeric(0)
+          )
+        }
+        dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i])
+      })
+    )
   })
   names(ptch_stat_df) <- funList
 
