@@ -56,7 +56,6 @@
 #' @importFrom purrr transpose
 #' @importFrom sf st_as_sf
 #' @importFrom sf st_read
-#' @importFrom SpaDES.tools rasterizeReduced
 #' @importFrom stats median
 #' @importFrom stats na.omit
 #' @importFrom stats qt

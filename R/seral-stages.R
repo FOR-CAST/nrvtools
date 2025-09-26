@@ -73,7 +73,10 @@ utils::globalVariables(c(
 #' }
 #' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
-  stopifnot(requireNamespace("qs", quietly = TRUE))
+  stopifnot(
+    requireNamespace("qs", quietly = TRUE),
+    requireNamespace("SpaDES.tools", quietly = TRUE)
+  )
 
   fndtbec <- ndtbec
   stopifnot(
@@ -371,7 +374,12 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   cohortData2[, SeralStage := factor(SeralStage, levels = .seralStagesBC)]
 
   ## build seral stage map raster from cohortData2 and pixelGroupMap2
-  ssm <- rasterizeReduced(cohortData2, pixelGroupMap2, "SeralStage", mapcode = "newPixelGroup")
+  ssm <- SpaDES.tools::rasterizeReduced(
+    cohortData2,
+    pixelGroupMap2,
+    "SeralStage",
+    mapcode = "newPixelGroup"
+  )
 
   return(ssm)
 }

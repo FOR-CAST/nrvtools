@@ -2,7 +2,7 @@
 
 - make explicit the dependency on R >= 4.1 due to use of native pipe (`|>`);
 - remove dependency package `raster` (#2);
-- move `qs` package to Suggests;
+- move `qs` and `SpaDES.tools` packages to Suggests;
 
 # nrvtools 0.0.21
 
