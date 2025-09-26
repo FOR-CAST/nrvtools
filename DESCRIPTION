@@ -10,6 +10,8 @@ Description: Tools and utilities for working with outputs from NRV
 License: GPL (>= 3)
 URL: https://github.com/FOR-CAST/nrvtools
 BugReports: https://github.com/FOR-CAST/nrvtools/issues
+Depends:
+    R (>= 4.1)
 Imports: 
     assertthat,
     data.table,

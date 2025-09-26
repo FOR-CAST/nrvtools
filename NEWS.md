@@ -1,5 +1,6 @@
 # nrvtools (development version)
 
+- make explicit the dependency on R >= 4.1 due to use of native pipe (`|>`);
 - move `qs` package to Suggests;
 
 # nrvtools 0.0.21
