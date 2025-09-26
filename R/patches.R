@@ -23,7 +23,7 @@ utils::globalVariables(c(
 patchAreas <- function(vtm) {
   areas <- landscapemetrics::lsm_p_area(vtm)
   areas <- areas[areas$class != 0, ] ## class 0 has no forested vegetation (e.g., recently disturbed)
-  spp <- raster::levels(vtm)[[1]]
+  spp <- terra::levels(vtm)[[1]]
   idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
   sppNames <- spp[match(areas$class, spp[[idcol]]), ][["values"]]
 
@@ -44,7 +44,7 @@ patchAreas <- function(vtm) {
 patchAges <- function(vtm, sam) {
   ptchs <- landscapemetrics::get_patches(vtm)[[1]] ## identify patches for each species (class)
   ptchs$class_0 <- NULL ## class 0 has no forested vegetation (e.g., recently disturbed)
-  spp <- raster::levels(vtm)[[1]]
+  spp <- terra::levels(vtm)[[1]]
   spp$class <- paste0("class_", spp[["ID"]])
   names(ptchs) <- spp[match(names(ptchs), spp[["class"]]), ][["values"]]
 
@@ -105,21 +105,21 @@ patchAreasSeral <- function(ssm) {
 #' @export
 #' @seealso [patchStatsSeral()]
 patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList) {
-  f <- raster::raster(flm)
-  t <- raster::raster(sam)
-  v <- raster::raster(vtm)
+  f <- terra::rast(flm)
+  t <- terra::rast(sam)
+  v <- terra::rast(vtm)
   byPoly <- lapply(polyNames, function(polyName) {
     message(paste("  vtm:", basename(vtm), "\n", "  sam:", basename(sam)))
     subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
 
-    fc <- raster::crop(f, subpoly)
+    fc <- terra::crop(f, subpoly)
 
-    tc <- raster::crop(t, subpoly)
-    tcm <- raster::mask(tc, subpoly)
-    tcm <- raster::mask(tcm, fc, maskvalue = 0) ## also mask non-flammable pixels
+    tc <- terra::crop(t, subpoly)
+    tcm <- terra::mask(tc, subpoly)
+    tcm <- terra::mask(tcm, fc, maskvalue = 0) ## also mask non-flammable pixels
 
-    vc <- raster::crop(v, subpoly)
-    vcm <- raster::mask(vc, subpoly)
+    vc <- terra::crop(v, subpoly)
+    vcm <- terra::mask(vc, subpoly)
 
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
@@ -160,18 +160,18 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 #' @export
 #' @seealso [patchStats()]
 patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList) {
-  f <- raster::raster(flm)
-  s <- raster::raster(ssm)
+  f <- terra::rast(flm)
+  s <- terra::rast(ssm)
 
   byPoly <- lapply(polyNames, function(polyName) {
     message(paste("  ssm:", basename(ssm)))
     subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
 
-    fc <- raster::crop(f, subpoly)
+    fc <- terra::crop(f, subpoly)
 
-    sc <- raster::crop(s, subpoly)
-    scm <- raster::mask(sc, subpoly)
-    scm <- raster::mask(scm, fc, maskvalue = 0) ## also mask non-flammable pixels
+    sc <- terra::crop(s, subpoly)
+    scm <- terra::mask(sc, subpoly)
+    scm <- terra::mask(scm, fc, maskvalue = 0) ## also mask non-flammable pixels
 
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))

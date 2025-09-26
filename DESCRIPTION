@@ -23,7 +23,6 @@ Imports:
     methods,
     pemisc,
     purrr,
-    raster,
     sf,
     SpaDES.tools,
     stats,
