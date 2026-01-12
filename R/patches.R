@@ -2,6 +2,7 @@ utils::globalVariables(c(
   "class",
   "id",
   "layer",
+  "lyr.1",
   "level",
   "metric",
   "N",
@@ -59,7 +60,7 @@ patchAges <- function(vtm, sam) {
       sam = sam[ids]
     ) |>
       dplyr::group_by(layer, level, class, id, metric) |>
-      dplyr::summarise(value = median(sam, na.rm = TRUE))
+      dplyr::summarise(value = median(lyr.1, na.rm = TRUE))
   }))
 
   return(df)

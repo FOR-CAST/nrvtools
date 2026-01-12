@@ -43,12 +43,16 @@ plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
 #' @export
 #' @rdname plot_by
 plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
+  stopifnot(
+    type %in% c("box", "violin")
+  )
+
   ggplot(summary_df, aes(x = class, y = mn)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     switch(
       type,
       box = geom_boxplot(outlier.colour = "grey4", outlier.shape = 21, outlier.size = 1.0),
-      violin = geom_violin(outlier.colour = "grey4")
+      violin = geom_violin()
     ) +
     scale_x_discrete(guide = guide_axis(angle = 90)) +
     theme_bw() +
