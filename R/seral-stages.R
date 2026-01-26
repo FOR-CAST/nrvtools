@@ -63,7 +63,7 @@ utils::globalVariables(c(
 #' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   stopifnot(
-    requireNamespace("qs", quietly = TRUE),
+    requireNamespace("qs2", quietly = TRUE),
     requireNamespace("SpaDES.tools", quietly = TRUE)
   )
 
@@ -73,7 +73,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
     is.character(pgm) && file.exists(pgm),
     is.character(fndtbec) && file.exists(fndtbec)
   )
-  cohortData <- qs::qread(cd)
+  cohortData <- qs2::qs_read(cd)
   pixelGroupMap <- terra::rast(pgm)
   NDTBEC <- sf::st_read(fndtbec, quiet = TRUE)
 
@@ -82,7 +82,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   lvls <- terra::levels(rstNDTBEC)[[1]]
   idcol <- which(grepl("id", names(lvls), ignore.case = TRUE))
-  ndtbec <- lvls[match(values(rstNDTBEC, mat = FALSE), lvls[[idcol]]), "NDTBEC"]
+  ndtbec <- lvls[match(terra::values(rstNDTBEC, mat = FALSE), lvls[[idcol]]), "NDTBEC"]
   assertthat::assert_that(terra::ncell(pixelGroupMap) == length(ndtbec))
 
   pgmByNdtbec <- data.table(

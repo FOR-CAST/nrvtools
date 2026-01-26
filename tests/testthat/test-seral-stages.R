@@ -37,7 +37,7 @@ test_that("BC seral stage calculations work", {
   fcd <- vapply(
     outputDir,
     function(d) {
-      file.path(d, sprintf("cohortData_year%04d.qs", years))
+      file.path(d, sprintf("cohortData_year%04d.qs2", years))
     },
     character(length(years))
   ) |>
@@ -147,7 +147,7 @@ test_that("BC seral stage calculations work in parallel", {
   fcd <- vapply(
     outputDirs,
     function(d) {
-      file.path(d, sprintf("cohortData_year%04d.qs", years))
+      file.path(d, sprintf("cohortData_year%04d.qs2", years))
     },
     character(length(years))
   ) |>

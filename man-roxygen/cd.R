@@ -1,1 +1,1 @@
-#' @param cd character, specifying the file path to a `cohortData` object (`.qs` or `.rds`)
+#' @param cd character, specifying the file path to a `cohortData` object (`.qs2` or `.rds`)

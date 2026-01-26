@@ -15,7 +15,7 @@ writeSeralStageMapBC(
 )
 }
 \arguments{
-\item{cd}{character, specifying the file path to a \code{cohortData} object (\code{.qs} or \code{.rds})}
+\item{cd}{character, specifying the file path to a \code{cohortData} object (\code{.qs2} or \code{.rds})}
 
 \item{pgm}{character, specifying the file path to a \code{pixelGroupMap} raster (\code{.tif})}
 

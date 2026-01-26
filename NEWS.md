@@ -2,7 +2,10 @@
 
 - make explicit the dependency on R >= 4.1 due to use of native pipe (`|>`);
 - remove dependency package `raster` (#2);
-- move `qs` and `SpaDES.tools` packages to Suggests;
+- remove defunct package `qs`, use `qs2` instead;
+- add `exactextractr` and `tidyterra` to Imports;
+- move `SpaDES.tools` to Suggests;
+- rework analyses to use `terra`, which is generally faster and lower memory than `sf`;
 
 # nrvtools 0.0.21
 

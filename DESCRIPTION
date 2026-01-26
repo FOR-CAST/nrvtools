@@ -16,6 +16,7 @@ Imports:
     assertthat,
     data.table,
     dplyr,
+    exactextractr,
     future.apply,
     ggforce,
     ggplot2,
@@ -26,6 +27,7 @@ Imports:
     sf,
     stats,
     terra,
+    tidyterra,
     tools,
     utils
 Suggests:
@@ -33,7 +35,7 @@ Suggests:
     future,
     future.callr,
     map,
-    qs,
+    qs2,
     SpaDES.tools,
     testthat (>= 3.0.0),
     withr
