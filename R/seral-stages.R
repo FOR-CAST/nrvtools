@@ -1,17 +1,6 @@
 utils::globalVariables(c(
-  "age",
-  "B",
-  "NDTBEC",
-  "newPixelGroup",
-  "pixelGroup",
-  "propB",
-  "propB.x",
-  "propB.y",
-  "Rank",
-  "SeralStage",
-  "speciesCode",
-  "totalB",
-  "weightedAge"
+  "age", "B", "NDTBEC", "newPixelGroup", "pixelGroup", "propB", "propB.x", "propB.y",
+  "Rank", "SeralStage", "speciesCode", "totalB", "weightedAge"
 ))
 
 #' Seral stage classes for BC forests

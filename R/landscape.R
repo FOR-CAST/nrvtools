@@ -1,10 +1,5 @@
 utils::globalVariables(c(
-  "N",
-  "poly",
-  "sd",
-  "se",
-  "time",
-  "value"
+  "N", "poly", "sd", "se", "time", "value"
 ))
 
 #' Calculate landscape metrics

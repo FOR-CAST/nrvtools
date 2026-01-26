@@ -1,16 +1,5 @@
 utils::globalVariables(c(
-  "class",
-  "id",
-  "layer",
-  "lyr.1",
-  "level",
-  "metric",
-  "N",
-  "poly",
-  "sd",
-  "se",
-  "time",
-  "value"
+  "class", "id", "layer", "lyr.1", "level", "metric", "N", "poly", "sd", "se", "time", "value"
 ))
 
 #' Calculate areas for each patch (per species)
