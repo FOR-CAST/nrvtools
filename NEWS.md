@@ -6,6 +6,7 @@
 - add `exactextractr` and `tidyterra` to Imports;
 - move `SpaDES.tools` to Suggests;
 - rework analyses to use `terra`, which is generally faster and lower memory than `sf`;
+- add `ecozones`, `ecoprovinces`, `ecoregions`, and `ecodistricts` polygon data for use as reporting polygons;
 
 # nrvtools 0.0.21
 
