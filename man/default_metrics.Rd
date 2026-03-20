@@ -42,7 +42,7 @@ The following patch- and class-level metrics are calculated using
 \pkg{landscapemetrics} and \pkg{nrvtools}:
 \itemize{
 \item \code{patchAges}: patch ages;
-\item \code{patchAreas}: patch area (uses lsm_p_area);
+\item \code{patchAreas}: patch area (uses \code{lsm_p_area} |> );
 \item \code{lsm_c_ai}: aggregation index by class;
 \item \code{lsm_c_area_cv}: coeff var patch area by class;
 \item \code{lsm_c_area_mn}: mean patch area by class;
@@ -57,7 +57,7 @@ The following patch- and class-level metrics are calculated using
 The following patch- and class-level metrics are calculated using
 \pkg{landscapemetrics} and \pkg{nrvtools}:
 \itemize{
-\item \code{patchAreasSeral}:  patch area (uses lsm_p_area);
+\item \code{patchAreasSeral}:  patch area (uses \code{lsm_p_area});
 \item the subset of \code{default_patch_metrics()} from \pkg{landscapemetrics}
 (i.e., prefixed with 'lsm_')
 }
