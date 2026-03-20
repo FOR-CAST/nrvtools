@@ -6,7 +6,7 @@
 #'
 #' - `lsm_l_area_mn`: mean patch area;
 #' - `lsm_l_area_sd`: standard deviation of patch area;
-#' - `lsm_l_cohesion`, ## cohesion index;
+#' - `lsm_l_cohesion`, cohesion index;
 #' - `lsm_l_condent`: conditional entropy;
 #' - `lsm_l_core_cv`: coeff var of core area;
 #' - `lsm_l_core_mn`: mean core area;
@@ -74,10 +74,5 @@ default_patch_metrics <- function() {
 default_patch_metrics_seral <- function() {
   pm_default <- default_patch_metrics()
   lsm_default <- pm_default[grepl("lsm_", pm_default)]
-  append(
-    list(
-      "patchAreasSeral"
-    ),
-    lsm_default
-  )
+  append(list("patchAreasSeral"), lsm_default)
 }

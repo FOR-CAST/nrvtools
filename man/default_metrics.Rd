@@ -25,7 +25,7 @@ The following landscape-level metrics are calculated using \pkg{landscapemetrics
 \itemize{
 \item \code{lsm_l_area_mn}: mean patch area;
 \item \code{lsm_l_area_sd}: standard deviation of patch area;
-\item \code{lsm_l_cohesion}, ## cohesion index;
+\item \code{lsm_l_cohesion}, cohesion index;
 \item \code{lsm_l_condent}: conditional entropy;
 \item \code{lsm_l_core_cv}: coeff var of core area;
 \item \code{lsm_l_core_mn}: mean core area;
