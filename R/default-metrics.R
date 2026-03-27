@@ -37,7 +37,7 @@ default_landscape_metrics <- function() {
 #' \pkg{landscapemetrics} and \pkg{nrvtools}:
 #'
 #' - `patchAges`: patch ages;
-#' - `patchAreas`: patch area (uses `lsm_p_area` |> );
+#' - `patchAreas`: patch area (uses `lsm_p_area`);
 #' - `lsm_c_ai`: aggregation index by class;
 #' - `lsm_c_area_cv`: coeff var patch area by class;
 #' - `lsm_c_area_mn`: mean patch area by class;
