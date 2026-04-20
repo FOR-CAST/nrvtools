@@ -23,19 +23,21 @@ writeSeralStageMapBC(
 BEC zones and Natural Disturbance Type polygons.}
 
 \item{ssm}{character, specifying the filename(s) to use for seral stage rasters.
-Defaults to using \code{ssm} as a template, replacing \code{pixelGroupMap} with \code{seralStageMap}.}
+Defaults to replacing \code{"pixelGroupMap"} with \code{"seralStageMap"} in each
+\code{pgm} path.}
 }
 \value{
 seral stage map (\code{SpatRaster})
 
-character vector of seral stage map filenames. invoked for side effect of writing to disk.
+character vector of seral stage map file paths. Invoked primarily for
+the side effect of writing rasters to disk.
 }
 \description{
 Seral stages based on Table 7 of Cariboo regional Biodiversity Conservation Strategy Report,
 and Update Note 3 defining the IDF_Fir and IDF_Pine groups:
 
 Wraps \code{seralStageMapGeneratorBC()} in \code{future.apply::future_mapply()} to
-writes multiple seral stage maps to disk, in parallel.
+write multiple seral stage maps to disk in parallel.
 See \code{?future::plan} for configuring parallel processing.
 }
 \details{

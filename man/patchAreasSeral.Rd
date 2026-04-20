@@ -2,7 +2,7 @@
 % Please edit documentation in R/patches.R
 \name{patchAreasSeral}
 \alias{patchAreasSeral}
-\title{Calculate median stand age for each patch (by seral stage)}
+\title{Calculate areas for each patch (by seral stage)}
 \usage{
 patchAreasSeral(ssm)
 }
@@ -10,10 +10,12 @@ patchAreasSeral(ssm)
 \item{ssm}{character, specifying the file path to a seral stage map raster (\code{.tif})}
 }
 \value{
-\code{tibble} object from \code{landscapemetrics::lsm_p_area}
+\code{tibble} with columns \code{layer}, \code{level}, \code{class}, \code{id}, \code{metric},
+and \code{value} (patch area in hectares), where \code{class} contains seral stage
+names. Wraps \code{\link[landscapemetrics:lsm_p_area]{landscapemetrics::lsm_p_area()}}.
 }
 \description{
-Calculate median stand age for each patch (by seral stage)
+Calculate areas for each patch (by seral stage)
 }
 \seealso{
 \code{\link[=patchAreas]{patchAreas()}}

@@ -16,7 +16,8 @@ patchStats(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 \item{polyNames}{character, specifying polygon names in \code{summaryPolys} over which
 to summarize patch statistics}
 
-\item{summaryPolys}{\code{sf} polygons object}
+\item{summaryPolys}{\code{sf} object containing the reporting polygons over which
+results are summarised. Each polygon defines one reporting zone.}
 
 \item{polyCol}{character, specifying the polygon attribute (column) in \code{summaryPolys} to use}
 

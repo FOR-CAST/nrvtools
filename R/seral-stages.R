@@ -376,13 +376,15 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 #' Write multiple seral stage maps to disk
 #'
 #' Wraps `seralStageMapGeneratorBC()` in `future.apply::future_mapply()` to
-#' writes multiple seral stage maps to disk, in parallel.
+#' write multiple seral stage maps to disk in parallel.
 #' See `?future::plan` for configuring parallel processing.
 #'
 #' @param ssm character, specifying the filename(s) to use for seral stage rasters.
-#'        Defaults to using `ssm` as a template, replacing `pixelGroupMap` with `seralStageMap`.
+#'   Defaults to replacing `"pixelGroupMap"` with `"seralStageMap"` in each
+#'   `pgm` path.
 #'
-#' @return character vector of seral stage map filenames. invoked for side effect of writing to disk.
+#' @return character vector of seral stage map file paths. Invoked primarily for
+#'   the side effect of writing rasters to disk.
 #'
 #' @export
 #' @rdname seralStageMapGeneratorBC

@@ -7,7 +7,8 @@
 calculateLandscapeMetrics(summaryPolys, polyCol, vtm, funList = NULL)
 }
 \arguments{
-\item{summaryPolys}{\code{sf} polygons object}
+\item{summaryPolys}{\code{sf} object containing the reporting polygons over which
+results are summarised. Each polygon defines one reporting zone.}
 
 \item{polyCol}{character, specifying the polygon attribute (column) in \code{summaryPolys} to use}
 

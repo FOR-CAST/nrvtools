@@ -12,7 +12,9 @@ patchAges(vtm, sam)
 \item{sam}{character, specifying the file path to a stand age map raster (\code{.tif})}
 }
 \value{
-\code{tibble} object from \code{landscapemetrics::lsm_p_area}
+\code{data.table} with columns \code{layer}, \code{level}, \code{class}, \code{id}, \code{metric},
+and \code{value}, where \code{class} contains species names and \code{value} is the median
+stand age (years) for each patch.
 }
 \description{
 Calculate median stand age for each patch (per species)

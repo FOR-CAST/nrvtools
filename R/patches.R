@@ -6,7 +6,9 @@ utils::globalVariables(c(
 #'
 #' @template vtm
 #'
-#' @return `tibble` object from `landscapemetrics::lsm_p_area`
+#' @return `tibble` with columns `layer`, `level`, `class`, `id`, `metric`,
+#'   and `value` (patch area in hectares), where `class` contains species names.
+#'   Wraps `landscapemetrics::lsm_p_area()`.
 #'
 #' @export
 #' @seealso [patchAreasSeral()]
@@ -28,7 +30,9 @@ patchAreas <- function(vtm) {
 #'
 #' @template sam
 #'
-#' @return `tibble` object from `landscapemetrics::lsm_p_area`
+#' @return `data.table` with columns `layer`, `level`, `class`, `id`, `metric`,
+#'   and `value`, where `class` contains species names and `value` is the median
+#'   stand age (years) for each patch.
 #'
 #' @export
 patchAges <- function(vtm, sam) {
@@ -55,11 +59,13 @@ patchAges <- function(vtm, sam) {
   return(df)
 }
 
-#' Calculate median stand age for each patch (by seral stage)
+#' Calculate areas for each patch (by seral stage)
 #'
 #' @template ssm
 #'
-#' @return `tibble` object from `landscapemetrics::lsm_p_area`
+#' @return `tibble` with columns `layer`, `level`, `class`, `id`, `metric`,
+#'   and `value` (patch area in hectares), where `class` contains seral stage
+#'   names. Wraps [landscapemetrics::lsm_p_area()].
 #'
 #' @export
 #' @seealso [patchAreas()]
@@ -146,6 +152,9 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 #' @template polyCol
 #'
 #' @template funList
+#'
+#' @return nested list of summary data.frames containing seral stage patch
+#'   statistics by summary polygon.
 #'
 #' @export
 #' @seealso [patchStats()]
@@ -394,13 +403,16 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
   return(ptch_stat_df)
 }
 
+#' @description
+#' `summarizePatchMetricsSeral()` is identical to `summarizePatchMetrics()` but
+#' additionally orders the `class` column by the canonical BC seral stage sequence.
+#'
 #' @export
 #' @rdname summarizePatchMetrics
 summarizePatchMetricsSeral <- function(ptch_stat_df) {
   summary_df <- summarizePatchMetrics(ptch_stat_df)
   summary_df <- lapply(names(summary_df), function(f) {
-    df <- summary_df[[f]] |>
-      dplyr::mutate(class = factor(class, levels = .seralStagesBC))
+    df <- summary_df[[f]] |> dplyr::mutate(class = factor(class, levels = .seralStagesBC))
 
     return(df)
   })

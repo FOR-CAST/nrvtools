@@ -14,7 +14,8 @@ patchStatsSeral(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 \item{polyNames}{character, specifying polygon names in \code{summaryPolys} over which
 to summarize patch statistics}
 
-\item{summaryPolys}{\code{sf} polygons object}
+\item{summaryPolys}{\code{sf} object containing the reporting polygons over which
+results are summarised. Each polygon defines one reporting zone.}
 
 \item{polyCol}{character, specifying the polygon attribute (column) in \code{summaryPolys} to use}
 
@@ -23,6 +24,10 @@ landscape or patch statistics (e.g., \code{list("lsm_l_area_mn")}).
 These functions must work analogously to those in \pkg{landscapemetrics}.
 If not specified by the user (i.e., \code{funList = NULL}), default function names are used:
 see \code{\link[=default_landscape_metrics]{default_landscape_metrics()}}, \code{\link[=default_patch_metrics]{default_patch_metrics()}}, \code{\link[=default_patch_metrics_seral]{default_patch_metrics_seral()}}.}
+}
+\value{
+nested list of summary data.frames containing seral stage patch
+statistics by summary polygon.
 }
 \description{
 Calculate patch statistics (metrics) based on seral stages

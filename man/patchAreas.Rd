@@ -10,7 +10,9 @@ patchAreas(vtm)
 \item{vtm}{character, specifying the file path to a vegetation type map raster (\code{.tif})}
 }
 \value{
-\code{tibble} object from \code{landscapemetrics::lsm_p_area}
+\code{tibble} with columns \code{layer}, \code{level}, \code{class}, \code{id}, \code{metric},
+and \code{value} (patch area in hectares), where \code{class} contains species names.
+Wraps \code{landscapemetrics::lsm_p_area()}.
 }
 \description{
 Calculate areas for each patch (per species)

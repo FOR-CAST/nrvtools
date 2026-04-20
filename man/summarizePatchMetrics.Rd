@@ -18,5 +18,6 @@ with names corresponding to those of \code{funList} passed to
 summary \code{data.frame} object
 }
 \description{
-Summarize patch statistics/metrics
+\code{summarizePatchMetricsSeral()} is identical to \code{summarizePatchMetrics()} but
+additionally orders the \code{class} column by the canonical BC seral stage sequence.
 }

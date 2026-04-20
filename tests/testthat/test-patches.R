@@ -1,37 +1,3 @@
-## Helper function to create a mock categorical raster with levels
-.create_mock_vtm <- function() {
-  ## Create a simple matrix for the raster
-  ## 1 = forest, 2 = grass, 3 = water
-  m <- matrix(
-    # fmt: skip
-    c(1, 1, 1, 2, 2,
-      1, 1, 2, 2, 3,
-      1, 1, 2, 3, 3,
-      1, 2, 3, 3, 3,
-      2, 2, 3, 3, 3),
-    nrow = 5,
-    ncol = 5,
-    byrow = TRUE
-  )
-
-  vtm <- terra::rast(m, crs = "EPSG:3857")
-
-  ## Create and assign levels (attribute table)
-  levels(vtm) <- data.frame(
-    ID = 1:3,
-    values = c("forest", "grass", "water")
-  )
-
-  return(vtm)
-}
-
-## Helper function to create a mock continuous raster
-.create_mock_sam <- function() {
-  m <- matrix(1:25, nrow = 5, ncol = 5, byrow = TRUE)
-  sam <- terra::rast(m, crs = "EPSG:3857")
-  return(sam)
-}
-
 testthat::test_that("patchAreas works correctly", {
   vtm <- .create_mock_vtm()
 
