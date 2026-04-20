@@ -81,7 +81,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   assertthat::assert_that(terra::compareGeom(rstNDTBEC, pixelGroupMap))
 
   lvls <- terra::levels(rstNDTBEC)[[1]]
-  idcol <- which(grepl("id", names(lvls), ignore.case = TRUE))
+  idcol <- which(tolower(names(lvls)) %in% c("id", "value"))
   ndtbec <- lvls[match(terra::values(rstNDTBEC, mat = FALSE), lvls[[idcol]]), "NDTBEC"]
   assertthat::assert_that(terra::ncell(pixelGroupMap) == length(ndtbec))
 

@@ -48,7 +48,7 @@ leadingVegTypeByAgeClass <- function(
   s <- terra::rast(sam)
 
   spp   <- terra::levels(v)[[1]]
-  idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
+  idcol <- which(tolower(names(spp)) %in% c("id", "value"))
 
   ## ensure Inf caps the uppermost age class
   ageBreaks <- c(ageClassCutOffs, Inf)

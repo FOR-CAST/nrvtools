@@ -85,7 +85,7 @@ utils::globalVariables(c(
   pixelAreaHa <- prod(terra::res(v)) / 1e4
 
   spp <- terra::levels(v)[[1]]
-  idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
+  idcol <- which(tolower(names(spp)) %in% c("id", "value"))
 
   grp <- basename(dirname(vtm))
   polyNames <- unique(summaryPolys[[polyCol]])

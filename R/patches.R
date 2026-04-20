@@ -16,7 +16,7 @@ patchAreas <- function(vtm) {
   areas <- landscapemetrics::lsm_p_area(vtm)
   areas <- areas[areas$class != 0, ] ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- terra::levels(vtm)[[1]]
-  idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
+  idcol <- which(tolower(names(spp)) %in% c("id", "value"))
   sppNames <- spp[match(areas$class, spp[[idcol]]), ][["values"]]
 
   areas <- dplyr::mutate(areas, class = sppNames)
@@ -39,7 +39,8 @@ patchAges <- function(vtm, sam) {
   ptchs <- landscapemetrics::get_patches(vtm)[[1]] ## identify patches for each species (class)
   ptchs$class_0 <- NULL ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- terra::levels(vtm)[[1]]
-  spp$class <- paste0("class_", spp[["ID"]])
+  idcol <- which(tolower(names(spp)) %in% c("id", "value"))
+  spp$class <- paste0("class_", spp[[idcol]])
   names(ptchs) <- spp[match(names(ptchs), spp[["class"]]), ][["values"]]
 
   df <- rbindlist(lapply(names(ptchs), function(p) {
@@ -72,7 +73,7 @@ patchAges <- function(vtm, sam) {
 patchAreasSeral <- function(ssm) {
   areas <- landscapemetrics::lsm_p_area(ssm)
   seral <- terra::levels(ssm)[[1]]
-  idcol <- which(grepl("id", names(seral), ignore.case = TRUE))
+  idcol <- which(tolower(names(seral)) %in% c("id", "value"))
   seralNames <- seral[match(areas[["class"]], seral[[idcol]]), ][["values"]]
 
   areas <- dplyr::mutate(areas, class = seralNames)

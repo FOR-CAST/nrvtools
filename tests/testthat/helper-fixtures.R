@@ -56,14 +56,14 @@
 .make_two_polys <- function(vtm_path) {
   v <- terra::rast(vtm_path)
   e <- as.vector(terra::ext(v))
-  mid_x <- (e["xmin"] + e["xmax"]) / 2
+  mid_x <- (e[["xmin"]] + e[["xmax"]]) / 2
   crs_v <- sf::st_crs(terra::crs(v))
   poly1 <- sf::st_as_sfc(sf::st_bbox(
-    c(xmin = e["xmin"], xmax = mid_x, ymin = e["ymin"], ymax = e["ymax"]),
+    c(xmin = e[["xmin"]], xmax = mid_x, ymin = e[["ymin"]], ymax = e[["ymax"]]),
     crs = crs_v
   ))
   poly2 <- sf::st_as_sfc(sf::st_bbox(
-    c(xmin = mid_x, xmax = e["xmax"], ymin = e["ymin"], ymax = e["ymax"]),
+    c(xmin = mid_x, xmax = e[["xmax"]], ymin = e[["ymin"]], ymax = e[["ymax"]]),
     crs = crs_v
   ))
   sf::st_sf(polyName = c("polyA", "polyB"), geometry = c(poly1, poly2))

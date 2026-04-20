@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Package Overview
 
-`nrvtools` is an R package providing tools for post-processing and summarizing outputs from Natural Range of Variability (NRV) simulations. It calculates landscape and patch metrics ("X over time" analyses) for use with the `NRV_summary` SpaDES module.
+`nrvtools` is an R package providing tools for post-processing and summarizing outputs from Natural Range of Variability (NRV) simulations. It calculates landscape and patch metrics ("X over time" analyses) for use with the `NRV_summary` SpaDES module (<https://github.com/FOR-CAST/NRV_summary>).
 
 ## Development Commands
 

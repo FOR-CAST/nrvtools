@@ -9,10 +9,12 @@ testthat::test_that("plot_over_time works correctly", {
   p <- plot_over_time(summary_df, "My Y-axis Label")
 
   ## Test if the output is a ggplot object
-  expect_s3_class(p, "ggplot")
+  testthat::expect_s3_class(p, "ggplot")
 
   ## Test that it doesn't throw an error
-  expect_no_error(print(p))
+  testthat::expect_no_error(print(p))
+
+  if (file.exists("Rplots.pdf")) file.remove(file.path("Rplots.pdf"))
 })
 
 testthat::test_that("plot_over_time_by_class works correctly", {
@@ -31,6 +33,8 @@ testthat::test_that("plot_over_time_by_class works correctly", {
 
   ## Test that it doesn't throw an error
   testthat::expect_no_error(print(p))
+
+  if (file.exists("Rplots.pdf")) file.remove(file.path("Rplots.pdf"))
 })
 
 testthat::test_that("plot_by_class works correctly", {
@@ -53,4 +57,6 @@ testthat::test_that("plot_by_class works correctly", {
 
   ## Test that it throws an error with an invalid type
   testthat::expect_error(plot_by_class(summary_df, type = "invalid_type"))
+
+  if (file.exists("Rplots.pdf")) file.remove(file.path("Rplots.pdf"))
 })

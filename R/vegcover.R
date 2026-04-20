@@ -82,7 +82,7 @@ utils::globalVariables(c(
   s <- terra::rast(sam)
 
   spp <- terra::levels(v)[[1]]
-  idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
+  idcol <- which(tolower(names(spp)) %in% c("id", "value"))
 
   grp <- basename(dirname(vtm))
   polyNames <- unique(summaryPolys[[polyCol]])

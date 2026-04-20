@@ -59,7 +59,7 @@ largePatches <- function(
   sam_class <- terra::classify(s, rcl, right = FALSE, include.lowest = TRUE)
 
   spp <- terra::levels(v)[[1]]
-  idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
+  idcol <- which(tolower(names(spp)) %in% c("id", "value"))
 
   polyNames <- unique(summaryPolys[[polyCol]])
 
@@ -131,7 +131,7 @@ largePatches <- function(
 
     all_species <- dt_all[sizeInHa >= minPatchSize]
 
-    data.table::rbindlist(list(by_species, all_species))
+    data.table::rbindlist(list(by_species, all_species), use.names = TRUE)
   }))
 }
 

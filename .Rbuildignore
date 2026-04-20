@@ -1,8 +1,10 @@
+^[.]?air[.]toml$
+^\.claude$
+^\.github$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.vscode$
+^CLAUDE\.md$
+^data-raw$
 ^LICENSE\.md$
 ^man-roxygen$
-^\.github$
-^[.]?air[.]toml$
-^\.vscode$
-^data-raw$
