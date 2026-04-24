@@ -399,8 +399,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
 summarizePatchMetricsSeral <- function(ptch_stat_df) {
   summary_df <- summarizePatchMetrics(ptch_stat_df)
   summary_df <- lapply(names(summary_df), function(f) {
-    df <- summary_df[[f]] |>
-      dplyr::mutate(class = factor(class, levels = .seralStagesBC))
+    df <- summary_df[[f]] |> dplyr::mutate(class = factor(class, levels = .seralStagesBC))
 
     return(df)
   })
