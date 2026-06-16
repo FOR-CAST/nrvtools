@@ -17,10 +17,7 @@
   vtm <- terra::rast(m, crs = "EPSG:3857")
 
   ## Create and assign levels (attribute table)
-  levels(vtm) <- data.frame(
-    ID = 1:3,
-    values = c("forest", "grass", "water")
-  )
+  levels(vtm) <- data.frame(ID = 1:3, values = c("forest", "grass", "water"))
 
   return(vtm)
 }
@@ -80,10 +77,7 @@ testthat::test_that("patchAges works correctly", {
 testthat::test_that("patchAreasSeral works correctly", {
   # Can reuse the vtm helper, just pretend the classes are seral stages
   ssm <- .create_mock_vtm()
-  levels(ssm) <- data.frame(
-    ID = 1:3,
-    values = c("Early", "Mid", "Late")
-  )
+  levels(ssm) <- data.frame(ID = 1:3, values = c("Early", "Mid", "Late"))
   landscapemetrics::check_landscape(ssm)
 
   areas <- patchAreasSeral(ssm)
@@ -100,4 +94,14 @@ testthat::test_that("patchAreasSeral works correctly", {
   # Check values for a known patch
   early_area <- areas$value[areas$class == "Early"]
   testthat::expect_equal(early_area, 8 * prod(terra::res(ssm)) / 1e4) ## areas in ha
+})
+
+testthat::test_that(".rat_value_col() finds the value column across RAT naming conventions", {
+  ## terra RATs name the cell-value column "ID" for some rasters and "value" for others (e.g. the
+  ## seral-stage map); the label column is "values". Must pick the value column, not the label.
+  testthat::expect_equal(.rat_value_col(data.frame(ID = 1:2, values = c("a", "b"))), 1L)
+  testthat::expect_equal(.rat_value_col(data.frame(value = 1:2, values = c("a", "b"))), 1L)
+  testthat::expect_equal(.rat_value_col(data.frame(values = c("a", "b"), value = 1:2)), 2L)
+  ## fall back to the first column when neither "id" nor "value" is present
+  testthat::expect_equal(.rat_value_col(data.frame(foo = 1:2, bar = c("a", "b"))), 1L)
 })

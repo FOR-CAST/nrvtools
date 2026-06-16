@@ -2,6 +2,16 @@ utils::globalVariables(c(
   "class", "id", "layer", "lyr.1", "level", "metric", "N", "poly", "sd", "se", "time", "value"
 ))
 
+## The column of a terra categorical RAT (`terra::levels(r)[[1]]`) that holds the raster cell value
+## (the integer code matched against `lsm_p_*()$class`). terra names this column "ID" for some rasters
+## and "value" for others (e.g. the seral-stage map from `seralStageMapGeneratorBC()`), so match either
+## -- anchored so the label column "values" is not picked -- and fall back to the first column (the
+## value column by terra convention).
+.rat_value_col <- function(rat) {
+  hit <- which(grepl("^(id|value)$", names(rat), ignore.case = TRUE))
+  if (length(hit) >= 1L) hit[[1L]] else 1L
+}
+
 #' Calculate areas for each patch (per species)
 #'
 #' @template vtm
@@ -14,7 +24,7 @@ patchAreas <- function(vtm) {
   areas <- landscapemetrics::lsm_p_area(vtm)
   areas <- areas[areas$class != 0, ] ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- terra::levels(vtm)[[1]]
-  idcol <- which(grepl("id", names(spp), ignore.case = TRUE))
+  idcol <- .rat_value_col(spp)
   sppNames <- spp[match(areas$class, spp[[idcol]]), ][["values"]]
 
   areas <- dplyr::mutate(areas, class = sppNames)
@@ -66,7 +76,7 @@ patchAges <- function(vtm, sam) {
 patchAreasSeral <- function(ssm) {
   areas <- landscapemetrics::lsm_p_area(ssm)
   seral <- terra::levels(ssm)[[1]]
-  idcol <- which(grepl("id", names(seral), ignore.case = TRUE))
+  idcol <- .rat_value_col(seral)
   seralNames <- seral[match(areas[["class"]], seral[[idcol]]), ][["values"]]
 
   areas <- dplyr::mutate(areas, class = seralNames)
