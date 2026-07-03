@@ -6,14 +6,19 @@
 \usage{
 plot_nrv_envelope(
   nrv_df,
+  type = c("ribbon", "boxplot"),
   facet = c("poly", "class", "metric", "metric.1"),
   ylab = "value"
 )
 }
 \arguments{
 \item{nrv_df}{A range-of-variation envelope \code{data.frame} from
-\code{\link[=summarize_nrv]{summarize_nrv()}} (must contain \code{time}, \code{mean}, \code{min}, \code{max}). \code{NULL} or a
-zero-row input returns \code{NULL}.}
+\code{\link[=summarize_nrv]{summarize_nrv()}}. \code{type = "ribbon"} needs \code{time}, \code{mean}, \code{min}, \code{max};
+\code{type = "boxplot"} needs \code{time}, \code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}. \code{NULL}
+or a zero-row input returns \code{NULL}.}
+
+\item{type}{Plot style: \code{"ribbon"} (mean line + min--max ribbon) or
+\code{"boxplot"} (box-and-whisker showing median and quartiles).}
 
 \item{facet}{Candidate faceting columns; those present and varying are combined
 into the panel label (default \code{c("poly", "class", "metric", "metric.1")}).}
@@ -24,10 +29,20 @@ into the panel label (default \code{c("poly", "class", "metric", "metric.1")}).}
 A \code{ggplot} object, or \code{NULL} for empty input.
 }
 \description{
-Draws the across-replicate mean line with a min--max ribbon for an envelope
-produced by \code{\link[=summarize_nrv]{summarize_nrv()}}, faceting by whichever of the requested
-categorical columns actually vary. Each distinct combination gets its own
-panel, so replicate envelopes never overlay ambiguously within a panel; a
-constant column is dropped from the panel label, and trivial data collapses to
-a single panel.
+Plots the across-replicate range of variation from an envelope produced by
+\code{\link[=summarize_nrv]{summarize_nrv()}}, in one of two styles:
+}
+\details{
+\itemize{
+\item \code{type = "ribbon"} -- the across-replicate mean line with a min--max ribbon;
+\item \code{type = "boxplot"} -- a box-and-whisker per time step built from the
+five-number summary (\code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}) via
+\code{geom_boxplot(stat = "identity")}, so the median and quartiles are shown
+(the mean-line/ribbon hides them).
+}
+
+Both facet by whichever of the requested categorical columns actually vary, so
+each distinct combination gets its own panel and replicate envelopes never
+overlay ambiguously within a panel; a constant column is dropped from the panel
+label, and trivial data collapses to a single panel.
 }

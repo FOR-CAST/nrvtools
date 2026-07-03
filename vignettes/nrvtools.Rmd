@@ -110,11 +110,19 @@ stay on disk.
 
 ## Plot the envelope
 
-`plot_nrv_envelope()` draws the across-replicate mean with a min--max ribbon,
-faceting by whichever categorical columns vary:
+`plot_nrv_envelope()` faces by whichever categorical columns vary and offers two
+styles.
+The default `"ribbon"` draws the across-replicate mean with a min--max ribbon:
 
-```{r plot}
+```{r plot-ribbon}
 plot_nrv_envelope(env, ylab = "patch area (ha)")
+```
+
+`type = "boxplot"` draws a box-and-whisker per time step from the five-number
+summary, which shows the median and quartiles that the ribbon hides:
+
+```{r plot-boxplot}
+plot_nrv_envelope(env, type = "boxplot", ylab = "patch area (ha)")
 ```
 
 For the paginated, faceted-by-reporting-unit plots used in SpaDES

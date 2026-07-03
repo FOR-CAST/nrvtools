@@ -62,6 +62,9 @@ testthat::test_that("plot_nrv_envelope facets varying columns and handles empty 
     metric = rep(c("m1", "m2"), 4),
     mean = stats::runif(8, 10, 20),
     min = stats::runif(8, 5, 10),
+    q25 = stats::runif(8, 10, 12),
+    median = stats::runif(8, 12, 15),
+    q75 = stats::runif(8, 15, 18),
     max = stats::runif(8, 20, 25)
   )
 
@@ -71,4 +74,27 @@ testthat::test_that("plot_nrv_envelope facets varying columns and handles empty 
 
   testthat::expect_null(plot_nrv_envelope(env[0, ]))
   testthat::expect_null(plot_nrv_envelope(NULL))
+})
+
+testthat::test_that("plot_nrv_envelope draws a box-and-whisker from the five-number summary", {
+  env <- data.frame(
+    time = rep(c(0, 50), 2),
+    poly = rep(c("polyA", "polyB"), each = 2),
+    mean = stats::runif(4, 10, 20),
+    min = stats::runif(4, 5, 10),
+    q25 = stats::runif(4, 10, 12),
+    median = stats::runif(4, 12, 15),
+    q75 = stats::runif(4, 15, 18),
+    max = stats::runif(4, 20, 25)
+  )
+
+  p <- plot_nrv_envelope(env, type = "boxplot")
+  testthat::expect_s3_class(p, "ggplot")
+  testthat::expect_no_error(print(p))
+
+  ## boxplot needs the five-number summary
+  testthat::expect_snapshot(
+    plot_nrv_envelope(env[, c("time", "poly", "mean", "min", "max")], type = "boxplot"),
+    error = TRUE
+  )
 })

@@ -1,4 +1,6 @@
-# nrvtools (development version)
+# nrvtools 0.1.0
+
+This is a breaking release: the replicated-metric summary path is now Arrow-native and memory-bounded, and the former in-memory summarising functions are removed. Consumers (e.g. the `FOR-CAST/NRV_summary` module) must be updated (see the "Breaking changes" below).
 
 ## Breaking changes
 
@@ -9,9 +11,10 @@
 ## New features
 
 - `summarize_nrv()`, `open_nrv_dataset()`, and `write_nrv_parquet()` add an Arrow-native path for range-of-variation summaries: each replicate's metrics are written to a partitioned parquet (`write_nrv_parquet()`, published atomically so concurrent writers on an NFS mount never collide) and the across-replicate envelope is computed by pushing the reduction down to Arrow compute (`summarize_nrv()`), so replicate rows are never all held in memory at once.
+- `summarize_nrv()` returns the full five-number summary (`min`, `q25`, `median`, `q75`, `max`, all Arrow-approximate for the quantiles) in addition to `mean`/`sd`/`n_reps`/`se`/`ci`, so both ribbon and box-and-whisker range-of-variation plots can be drawn from the same envelope.
 - `tidy_nrv_metrics()` row-binds a raw metric list (from `nrv_metrics_landscape()` / `calculatePatchMetrics()` / `calculatePatchMetricsSeral()`) into one long table ready for `write_nrv_parquet()`, optionally stamping `studyArea`/`scenario`.
 - `seral_stages()` returns the ordered BC seral-stage class labels for use as factor levels.
-- `plot_nrv_envelope()` plots a `summarize_nrv()` envelope as a mean line with a min-max ribbon, faceting by whichever categorical columns vary so replicate envelopes never overlay within a panel.
+- `plot_nrv_envelope()` plots a `summarize_nrv()` envelope, faceting by whichever categorical columns vary so replicate envelopes never overlay within a panel, in one of two styles via `type`: `"ribbon"` (mean line + min-max ribbon) or `"boxplot"` (box-and-whisker showing the median and quartiles the ribbon hides).
 - add a "Memory-bounded NRV summaries with nrvtools" usage vignette walking through the raw-metrics -> parquet -> `summarize_nrv()` -> `plot_nrv_envelope()` workflow.
 - `patchAreasSeral()` (and `patchAreas()`) now resolve the raster-attribute-table cell-value column via the new internal `.rat_value_col()` helper (match `ID` or `value`, else fall back to the first column) instead of assuming a column name containing `"id"`; the seral-stage map from `seralStageMapGeneratorBC()` names that column `value`, so the previous lookup returned `integer(0)` and `patchAreasSeral()` crashed with a `.subset2` "select less than one element" error.
 - make explicit the dependency on R >= 4.1 due to use of native pipe (`|>`);

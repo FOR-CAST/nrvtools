@@ -145,8 +145,11 @@ open_nrv_dataset <- function(x) {
 #' deviation, min, max and median of `value_col`, plus the standard error and 95%
 #' confidence half-width computed in R from the collected envelope.
 #'
-#' Note: Arrow computes an *approximate* median; this is acceptable for
-#' range-of-variation envelopes. `min`/`max`/`mean`/`sd`/`n_reps` are exact.
+#' Note: Arrow computes *approximate* medians and quartiles; this is acceptable
+#' for range-of-variation envelopes. `min`/`max`/`mean`/`sd`/`n_reps` are exact.
+#' The five-number summary (`min`, `q25`, `median`, `q75`, `max`) supports
+#' box-and-whisker range-of-variation plots ([plot_nrv_envelope()] with
+#' `type = "boxplot"`).
 #'
 #' @param x Parquet paths / roots (see [open_nrv_dataset()]) or an Arrow
 #'   `Dataset` / query.
@@ -156,7 +159,7 @@ open_nrv_dataset <- function(x) {
 #'   `metric.1`.
 #'
 #' @return A `data.frame` with the id columns plus `n_reps`, `mean`, `sd`, `min`,
-#'   `max`, `median`, `se`, `ci`; zero rows if there is no data.
+#'   `q25`, `median`, `q75`, `max`, `se`, `ci`; zero rows if there is no data.
 #'
 #' @export
 summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
@@ -183,8 +186,8 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
   }
   id_cols <- setdiff(id_cols, value_col)
   vsym <- rlang::sym(value_col)
-  ## Arrow's median is approximate (documented); muffle only that expected note.
-  ## Arrow emits it while BUILDING the query, so wrap the whole pipeline, not just collect().
+  ## Arrow's median/quantile are approximate (documented); muffle only those expected notes.
+  ## Arrow emits them while BUILDING the query, so wrap the whole pipeline, not just collect().
   out <- withCallingHandlers(
     ds |>
       dplyr::group_by(!!!rlang::syms(id_cols)) |>
@@ -193,13 +196,15 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
         mean = mean(!!vsym, na.rm = TRUE),
         sd = stats::sd(!!vsym, na.rm = TRUE),
         min = min(!!vsym, na.rm = TRUE),
-        max = max(!!vsym, na.rm = TRUE),
+        q25 = stats::quantile(!!vsym, 0.25, na.rm = TRUE),
         median = stats::median(!!vsym, na.rm = TRUE),
+        q75 = stats::quantile(!!vsym, 0.75, na.rm = TRUE),
+        max = max(!!vsym, na.rm = TRUE),
         .groups = "drop"
       ) |>
       dplyr::collect(),
     warning = function(w) {
-      if (grepl("approximate median", conditionMessage(w), fixed = TRUE)) {
+      if (grepl("approximate (median|quantile)", conditionMessage(w))) {
         invokeRestart("muffleWarning")
       }
     }

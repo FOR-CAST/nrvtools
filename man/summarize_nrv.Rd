@@ -18,7 +18,7 @@ among \code{studyArea}, \code{scenario}, \code{time}, \code{poly}, \code{class},
 }
 \value{
 A \code{data.frame} with the id columns plus \code{n_reps}, \code{mean}, \code{sd}, \code{min},
-\code{max}, \code{median}, \code{se}, \code{ci}; zero rows if there is no data.
+\code{q25}, \code{median}, \code{q75}, \code{max}, \code{se}, \code{ci}; zero rows if there is no data.
 }
 \description{
 Opens the replicate parquet(s) lazily and pushes the across-replicate
@@ -29,6 +29,9 @@ deviation, min, max and median of \code{value_col}, plus the standard error and 
 confidence half-width computed in R from the collected envelope.
 }
 \details{
-Note: Arrow computes an \emph{approximate} median; this is acceptable for
-range-of-variation envelopes. \code{min}/\code{max}/\code{mean}/\code{sd}/\code{n_reps} are exact.
+Note: Arrow computes \emph{approximate} medians and quartiles; this is acceptable
+for range-of-variation envelopes. \code{min}/\code{max}/\code{mean}/\code{sd}/\code{n_reps} are exact.
+The five-number summary (\code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}) supports
+box-and-whisker range-of-variation plots (\code{\link[=plot_nrv_envelope]{plot_nrv_envelope()}} with
+\code{type = "boxplot"}).
 }

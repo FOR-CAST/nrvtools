@@ -36,7 +36,21 @@ test_that("summarize_nrv matches an in-memory oracle and derives se", {
   env <- summarize_nrv(root)
   expect_setequal(
     names(env),
-    c("time", "poly", "metric", "n_reps", "mean", "sd", "min", "max", "median", "se", "ci")
+    c(
+      "time",
+      "poly",
+      "metric",
+      "n_reps",
+      "mean",
+      "sd",
+      "min",
+      "q25",
+      "median",
+      "q75",
+      "max",
+      "se",
+      "ci"
+    )
   )
   expect_equal(unique(env$n_reps), 5L)
   ov <- do.call(rbind, vals)
