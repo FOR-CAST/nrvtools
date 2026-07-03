@@ -1,5 +1,7 @@
 # nrvtools (development version)
 
+- `summarize_nrv()`, `open_nrv_dataset()`, and `write_nrv_parquet()` add an Arrow-native path for range-of-variation summaries: each replicate's metrics are written to a partitioned parquet (`write_nrv_parquet()`, published atomically so concurrent writers on an NFS mount never collide) and the across-replicate envelope is computed by pushing the reduction down to Arrow compute (`summarize_nrv()`), so replicate rows are never all held in memory at once.
+- `plot_nrv_envelope()` plots a `summarize_nrv()` envelope as a mean line with a min-max ribbon, faceting by whichever categorical columns vary so replicate envelopes never overlay within a panel.
 - `patchAreasSeral()` (and `patchAreas()`) now resolve the raster-attribute-table cell-value column via the new internal `.rat_value_col()` helper (match `ID` or `value`, else fall back to the first column) instead of assuming a column name containing `"id"`; the seral-stage map from `seralStageMapGeneratorBC()` names that column `value`, so the previous lookup returned `integer(0)` and `patchAreasSeral()` crashed with a `.subset2` "select less than one element" error.
 - make explicit the dependency on R >= 4.1 due to use of native pipe (`|>`);
 - remove dependency package `raster` (#2);

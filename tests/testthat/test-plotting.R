@@ -54,3 +54,21 @@ testthat::test_that("plot_by_class works correctly", {
   ## Test that it throws an error with an invalid type
   testthat::expect_error(plot_by_class(summary_df, type = "invalid_type"))
 })
+
+testthat::test_that("plot_nrv_envelope facets varying columns and handles empty input", {
+  env <- data.frame(
+    time = rep(c(0, 50), 4),
+    poly = rep(c("polyA", "polyB"), each = 4),
+    metric = rep(c("m1", "m2"), 4),
+    mean = stats::runif(8, 10, 20),
+    min = stats::runif(8, 5, 10),
+    max = stats::runif(8, 20, 25)
+  )
+
+  p <- plot_nrv_envelope(env)
+  testthat::expect_s3_class(p, "ggplot")
+  testthat::expect_no_error(print(p))
+
+  testthat::expect_null(plot_nrv_envelope(env[0, ]))
+  testthat::expect_null(plot_nrv_envelope(NULL))
+})
