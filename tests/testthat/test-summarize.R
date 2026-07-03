@@ -53,3 +53,33 @@ test_that("summarize_nrv errors on a missing value column", {
   write_nrv_parquet(data.frame(time = 0, poly = "A", value = 1), root, 1L)
   expect_snapshot(summarize_nrv(root, value_col = "nope"), error = TRUE)
 })
+
+test_that("tidy_nrv_metrics binds a metric list, drops empties, stamps ids", {
+  metric_list <- list(
+    lsm_l_ed = data.frame(level = "landscape", metric = "ed", value = 1:2, rep = 1L, time = 0),
+    empty = data.frame(level = character(0), metric = character(0), value = numeric(0)),
+    skip = NULL,
+    patchAreas = data.frame(level = "patch", metric = "area", value = 3, rep = 1L, time = 0)
+  )
+  d <- tidy_nrv_metrics(metric_list, studyArea = "SA1", scenario = "hrv")
+  expect_equal(nrow(d), 3L)
+  expect_equal(names(d)[1:2], c("studyArea", "scenario"))
+  expect_equal(unique(d$studyArea), "SA1")
+  expect_setequal(d$metric, c("ed", "area"))
+  ## a single data.frame is accepted and, with no ids, returned unstamped
+  d1 <- tidy_nrv_metrics(metric_list$lsm_l_ed)
+  expect_false("studyArea" %in% names(d1))
+  expect_equal(nrow(d1), 2L)
+})
+
+test_that("tidy_nrv_metrics returns an empty frame when nothing to bind", {
+  expect_equal(nrow(tidy_nrv_metrics(list(NULL, data.frame()))), 0L)
+})
+
+test_that("seral_stages returns the ordered BC seral classes", {
+  s <- seral_stages()
+  expect_type(s, "character")
+  expect_equal(s[1], "early")
+  expect_equal(s[length(s)], "old_Other")
+  expect_length(s, 16L)
+})

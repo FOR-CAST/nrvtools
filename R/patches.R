@@ -1,5 +1,5 @@
 utils::globalVariables(c(
-  "class", "id", "layer", "lyr.1", "level", "metric", "N", "poly", "sd", "se", "time", "value"
+  "class", "id", "layer", "lyr.1", "level", "metric"
 ))
 
 ## The column of a terra categorical RAT (`terra::levels(r)[[1]]`) that holds the raster cell value
@@ -282,38 +282,6 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
   return(ptch_stat_df)
 }
 
-#' Summarize patch statistics/metrics
-#'
-#' @param ptch_stat_df named list of patch stat `data.frame` objects,
-#'        with names corresponding to those of `funList` passed to
-#'        `calculatePatchMetrics()` or `calculatePatchMetricsSeral()`.
-#'
-#' @return summary `data.frame` object
-#'
-#' @export
-#' @rdname summarizePatchMetrics
-summarizePatchMetrics <- function(ptch_stat_df) {
-  summary_df <- lapply(names(ptch_stat_df), function(f) {
-    ptch_stat_df[[f]] |>
-      dplyr::group_by(class, time, poly, metric) |>
-      dplyr::summarise(
-        N = length(value),
-        mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
-        q1 = ifelse(N > 0, quantile(value, 0.25, na.rm = TRUE), NA_real_),
-        md = ifelse(N > 0, median(value, na.rm = TRUE), NA_real_),
-        mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
-        q3 = ifelse(N > 0, quantile(value, 0.75, na.rm = TRUE), NA_real_),
-        mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
-        sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
-        se = ifelse(N > 0, sd / sqrt(N), NA_real_),
-        ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
-      )
-  })
-  names(summary_df) <- names(ptch_stat_df)
-
-  return(summary_df)
-}
-
 #' Calculate seral stage patch statistics/metrics
 #'
 #' @template summaryPolys
@@ -402,18 +370,4 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
   names(ptch_stat_df) <- funList
 
   return(ptch_stat_df)
-}
-
-#' @export
-#' @rdname summarizePatchMetrics
-summarizePatchMetricsSeral <- function(ptch_stat_df) {
-  summary_df <- summarizePatchMetrics(ptch_stat_df)
-  summary_df <- lapply(names(summary_df), function(f) {
-    df <- summary_df[[f]] |> dplyr::mutate(class = factor(class, levels = .seralStagesBC))
-
-    return(df)
-  })
-  names(summary_df) <- names(ptch_stat_df)
-
-  return(summary_df)
 }

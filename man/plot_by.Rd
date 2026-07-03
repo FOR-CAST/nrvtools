@@ -13,7 +13,9 @@ plot_over_time_by_class(summary_df, ylabel, page = 1)
 plot_by_class(summary_df, type = c("box", "violin"), page = 1)
 }
 \arguments{
-\item{summary_df}{summary \code{data.frame} object containing the data to use for plotting}
+\item{summary_df}{a range-of-variation summary \code{data.frame} from
+\code{\link[=summarize_nrv]{summarize_nrv()}} (uses the across-replicate \code{mean} and \code{sd}, faceted by
+\code{poly} and, for the by-class variants, coloured/grouped by \code{class}).}
 
 \item{ylabel}{character, specifying the label for the y-axis}
 

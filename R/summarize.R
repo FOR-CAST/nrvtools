@@ -1,5 +1,62 @@
 utils::globalVariables(c("n_reps"))
 
+#' Bind a raw per-replicate metric list into one tidy long table
+#'
+#' The raw metric producers ([nrv_metrics_landscape()], [calculatePatchMetrics()],
+#' [calculatePatchMetricsSeral()]) each return a named `list` -- one element per
+#' entry in `funList` -- of long `data.frame`s that already share the columns
+#' `level`, `class`, `metric`, `value`, `rep`, `time`, `poly` (the
+#' \pkg{landscapemetrics} `metric` name together with `level` uniquely identifies
+#' each metric, so the `funList` element name is not carried as a separate column).
+#' This binds them into a single long table ready for [write_nrv_parquet()],
+#' optionally stamping run-level identifiers so a union of several runs can be
+#' grouped by them in [summarize_nrv()].
+#'
+#' @param metric_list A named `list` of raw metric `data.frame`s, or a single
+#'   `data.frame`. `NULL`/empty elements are dropped; an all-empty input returns a
+#'   zero-row `data.frame`.
+#' @param studyArea,scenario Optional length-1 identifiers prepended as columns
+#'   (when not `NULL`).
+#'
+#' @return A long `data.frame` (the row-bind of `metric_list`), with `studyArea`
+#'   and/or `scenario` prepended when supplied.
+#'
+#' @export
+tidy_nrv_metrics <- function(metric_list, studyArea = NULL, scenario = NULL) {
+  if (is.data.frame(metric_list)) {
+    metric_list <- list(metric_list)
+  }
+  metric_list <- metric_list[!vapply(metric_list, is.null, logical(1))]
+  metric_list <- metric_list[vapply(metric_list, function(d) nrow(d) > 0L, logical(1))]
+  if (length(metric_list) == 0L) {
+    return(data.frame())
+  }
+  d <- as.data.frame(
+    data.table::rbindlist(metric_list, use.names = TRUE, fill = TRUE),
+    stringsAsFactors = FALSE
+  )
+  ids <- list(studyArea = studyArea, scenario = scenario)
+  ids <- ids[!vapply(ids, is.null, logical(1))]
+  if (length(ids)) {
+    d <- data.frame(ids, d, row.names = NULL, stringsAsFactors = FALSE, check.names = FALSE)
+  }
+  d
+}
+
+#' Ordered seral stage classes for BC forests
+#'
+#' Returns the canonical BC seral-stage class labels in display order (early ->
+#' old, with the NDT4 Fir/Pine/Other groups), for use as `levels` when ordering a
+#' `class` column produced by [calculatePatchMetricsSeral()] /
+#' [seralStageMapGeneratorBC()], e.g. `factor(class, levels = seral_stages())`.
+#'
+#' @return An ordered character vector of seral-stage class labels.
+#'
+#' @export
+seral_stages <- function() {
+  .seralStagesBC
+}
+
 #' Write one replicate's metric table to a partitioned parquet
 #'
 #' Writes `df` (one replicate's tidy long metric table) under

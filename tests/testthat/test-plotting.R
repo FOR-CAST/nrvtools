@@ -1,7 +1,7 @@
 testthat::test_that("plot_over_time works correctly", {
   summary_df <- data.frame(
     time = rep(2000:2002, 2),
-    mn = stats::runif(6, 10, 20),
+    mean = stats::runif(6, 10, 20),
     sd = stats::runif(6, 1, 2),
     poly = rep(c("polyA", "polyB"), each = 3)
   )
@@ -18,7 +18,7 @@ testthat::test_that("plot_over_time works correctly", {
 testthat::test_that("plot_over_time_by_class works correctly", {
   summary_df <- data.frame(
     time = rep(2000:2002, 4),
-    mn = stats::runif(12, 10, 20),
+    mean = stats::runif(12, 10, 20),
     sd = stats::runif(12, 1, 2),
     poly = rep(c("polyA", "polyB"), each = 6),
     class = rep(c("class1", "class2"), 6)
@@ -35,7 +35,7 @@ testthat::test_that("plot_over_time_by_class works correctly", {
 
 testthat::test_that("plot_by_class works correctly", {
   summary_df <- data.frame(
-    mn = stats::runif(20, 10, 20),
+    mean = stats::runif(20, 10, 20),
     poly = rep(c("polyA", "polyB"), each = 10),
     class = rep(paste0("class", 1:5), 4),
     metric = "test_metric"

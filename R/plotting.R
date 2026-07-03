@@ -1,10 +1,12 @@
 utils::globalVariables(c(
-  "mn"
+  "class", "time"
 ))
 
 #' NRV summary plots
 #'
-#' @param summary_df summary `data.frame` object containing the data to use for plotting
+#' @param summary_df a range-of-variation summary `data.frame` from
+#'   [summarize_nrv()] (uses the across-replicate `mean` and `sd`, faceted by
+#'   `poly` and, for the by-class variants, coloured/grouped by `class`).
 #'
 #' @param ylabel character, specifying the label for the y-axis
 #'
@@ -15,11 +17,11 @@ utils::globalVariables(c(
 #' @export
 #' @rdname plot_by
 plot_over_time <- function(summary_df, ylabel, page = 1) {
-  ggplot(summary_df, aes(x = time, y = mn)) +
+  ggplot(summary_df, aes(x = time, y = mean)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     geom_point() +
     geom_line() +
-    geom_errorbar(aes(ymin = mn - sd, ymax = mn + sd), width = 0.5) +
+    geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.5) +
     theme_bw() +
     theme(legend.position = "none") +
     ylab(ylabel)
@@ -28,11 +30,11 @@ plot_over_time <- function(summary_df, ylabel, page = 1) {
 #' @export
 #' @rdname plot_by
 plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
-  ggplot(summary_df, aes(x = time, y = mn, col = class)) +
+  ggplot(summary_df, aes(x = time, y = mean, col = class)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     geom_point() +
     geom_line() +
-    geom_errorbar(aes(ymin = mn - sd, ymax = mn + sd), width = 0.5) +
+    geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.5) +
     theme_bw() +
     theme(legend.position = "bottom") +
     ylab(ylabel)
@@ -45,7 +47,7 @@ plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
 plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
   stopifnot(type %in% c("box", "violin"))
 
-  ggplot(summary_df, aes(x = class, y = mn)) +
+  ggplot(summary_df, aes(x = class, y = mean)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     switch(
       type,

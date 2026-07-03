@@ -1,6 +1,16 @@
 # nrvtools (development version)
 
+## Breaking changes
+
+- `calculateLandscapeMetrics()` is removed and replaced by `nrv_metrics_landscape()`, which returns the raw per-replicate landscape metrics (one row per replicate x time x polygon x metric, sharing the `level`/`class`/`metric`/`value`/`rep`/`time`/`poly` schema of the patch producers) instead of an across-replicate summary; feed it through `summarize_nrv()` to build the range-of-variation envelope. The rename is deliberate so callers of the old summarising behaviour fail loudly rather than silently mis-aggregate.
+- `summarizePatchMetrics()` and `summarizePatchMetricsSeral()` are removed; the across-replicate reduction is now done once, memory-bounded, by `summarize_nrv()` (order seral classes for display with `factor(class, levels = seral_stages())`).
+- `plot_over_time()`, `plot_over_time_by_class()`, and `plot_by_class()` now read the `summarize_nrv()` envelope columns (`mean`/`sd`) instead of the former `mn`/`sd`.
+
+## New features
+
 - `summarize_nrv()`, `open_nrv_dataset()`, and `write_nrv_parquet()` add an Arrow-native path for range-of-variation summaries: each replicate's metrics are written to a partitioned parquet (`write_nrv_parquet()`, published atomically so concurrent writers on an NFS mount never collide) and the across-replicate envelope is computed by pushing the reduction down to Arrow compute (`summarize_nrv()`), so replicate rows are never all held in memory at once.
+- `tidy_nrv_metrics()` row-binds a raw metric list (from `nrv_metrics_landscape()` / `calculatePatchMetrics()` / `calculatePatchMetricsSeral()`) into one long table ready for `write_nrv_parquet()`, optionally stamping `studyArea`/`scenario`.
+- `seral_stages()` returns the ordered BC seral-stage class labels for use as factor levels.
 - `plot_nrv_envelope()` plots a `summarize_nrv()` envelope as a mean line with a min-max ribbon, faceting by whichever categorical columns vary so replicate envelopes never overlay within a panel.
 - `patchAreasSeral()` (and `patchAreas()`) now resolve the raster-attribute-table cell-value column via the new internal `.rat_value_col()` helper (match `ID` or `value`, else fall back to the first column) instead of assuming a column name containing `"id"`; the seral-stage map from `seralStageMapGeneratorBC()` names that column `value`, so the previous lookup returned `integer(0)` and `patchAreasSeral()` crashed with a `.subset2` "select less than one element" error.
 - make explicit the dependency on R >= 4.1 due to use of native pipe (`|>`);

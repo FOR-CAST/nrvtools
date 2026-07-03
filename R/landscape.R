@@ -1,8 +1,22 @@
 utils::globalVariables(c(
-  "N", "poly", "sd", "se", "time", "value"
+  "poly", "time"
 ))
 
-#' Calculate landscape metrics
+#' Calculate landscape metrics (raw, per replicate)
+#'
+#' Computes the requested landscape-level \pkg{landscapemetrics} for each
+#' vegetation-type map in `vtm` within each summary polygon, returning the *raw*
+#' per-replicate values (one row per replicate x time x polygon x metric). No
+#' across-replicate reduction is performed here: pass the result (via
+#' [tidy_nrv_metrics()] / [write_nrv_parquet()]) to [summarize_nrv()] to build the
+#' range-of-variation envelope. Keeping the producer raw is what makes the summary
+#' path memory-bounded -- each replicate's raw table can be written to its own
+#' parquet partition and the reduction pushed down to Arrow compute, instead of
+#' binding every replicate into memory before summarising.
+#'
+#' `vtm` file paths encode the replicate/time/polygon the way the summary path
+#' expects: the parent directory is the replicate (`rep<NN>`) and the file name is
+#' `<prefix>_year<YYYY>.tif`.
 #'
 #' @template summaryPolys
 #'
@@ -12,10 +26,12 @@ utils::globalVariables(c(
 #'
 #' @template funList
 #'
-#' @return summary `data.frame` object
+#' @return a named `list` (one element per entry in `funList`), each a raw long
+#'   `data.frame` with columns `layer`, `level`, `class`, `id`, `metric`, `value`,
+#'   `rep`, `time`, `poly`.
 #'
 #' @export
-calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL) {
+nrv_metrics_landscape <- function(summaryPolys, polyCol, vtm, funList = NULL) {
   if (!is(summaryPolys, "sf")) {
     summaryPolys <- sf::st_as_sf(summaryPolys)
   }
@@ -35,7 +51,6 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL
         subpoly <- summaryPolys[summaryPolys[[polyCol]] == polyName, ]
         rc <- terra::crop(r, subpoly)
         rcm <- terra::mask(rc, subpoly)
-        rcm
 
         out <- lapply(funList, function(fun) {
           fn <- get(fun)
@@ -78,21 +93,9 @@ calculateLandscapeMetrics <- function(summaryPolys, polyCol, vtm, funList = NULL
     vtmTimes <- as.integer(gsub("year", "", labels2a2))
     vtmStudyAreas <- labels2a3
 
-    df <- do.call(rbind, x) |>
-      dplyr::mutate(rep = vtmReps, time = vtmTimes, poly = vtmStudyAreas) |>
-      dplyr::group_by(time, poly) |>
-      dplyr::summarise(
-        N = length(value),
-        mm = ifelse(N > 0, min(value, na.rm = TRUE), NA_real_),
-        q1 = ifelse(N > 0, quantile(value, 0.25, na.rm = TRUE), NA_real_),
-        md = ifelse(N > 0, median(value, na.rm = TRUE), NA_real_),
-        mn = ifelse(N > 0, mean(value, na.rm = TRUE), NA_real_),
-        q3 = ifelse(N > 0, quantile(value, 0.75, na.rm = TRUE), NA_real_),
-        mx = ifelse(N > 0, max(value, na.rm = TRUE), NA_real_),
-        sd = ifelse(N > 0, sd(value, na.rm = TRUE), NA_real_),
-        se = ifelse(N > 0, sd / sqrt(N), NA_real_),
-        ci = ifelse(N > 1, se * qt(0.975, N - 1), NA_real_)
-      )
+    ## landscape-level metrics return one row per (rep x time x poly), so the parsed
+    ## rep/time/poly vectors align row-for-row with the bound raw values.
+    do.call(rbind, x) |> dplyr::mutate(rep = vtmReps, time = vtmTimes, poly = vtmStudyAreas)
   })
   names(frag_stat_df) <- funList
 

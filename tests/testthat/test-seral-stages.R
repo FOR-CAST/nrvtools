@@ -62,8 +62,7 @@ test_that("BC seral stage calculations work", {
     ssm <- seralStageMapGeneratorBC(fcd[yr], fpgm[yr], fNDTBEC)
     expect_true(all(levels(ssm)[[1]][["values"]] %in% .seralStagesBC))
 
-    areas <- patchAreasSeral(ssm) |>
-      dplyr::mutate(rep = run, time = years[yr], poly = "NDTBEC")
+    areas <- patchAreasSeral(ssm) |> dplyr::mutate(rep = run, time = years[yr], poly = "NDTBEC")
 
     expect_true(all(unique(areas$class) %in% .seralStagesBC))
 
@@ -195,6 +194,15 @@ test_that("BC seral stage calculations work in parallel", {
   refCode <- paste0("sspm_", md[layerName == p, ][["shortName"]])
   refCodeCC <- paste0(refCode, "_CC")
 
+  ## the across-replicate reduction is now done by summarize_nrv() over a parquet
+  ## dataset (see the nrvtools arrow-native summary path); tidy the raw metric
+  ## list, write it as a replicate partition, and summarize.
+  summarize_one <- function(dfl, replicate) {
+    root <- withr::local_tempdir()
+    write_nrv_parquet(tidy_nrv_metrics(dfl), root, replicate)
+    summarize_nrv(root)
+  }
+
   ## CC
   dfl_cc <- calculatePatchMetricsSeral(
     ssm = fssm0,
@@ -205,10 +213,8 @@ test_that("BC seral stage calculations work in parallel", {
   )
   expect_true(all(NDTBEC$NDTBEC %in% unique(dfl_cc$patchAreasSeral$poly)))
 
-  sdfl_cc <- suppressWarnings({
-    summarizePatchMetricsSeral(dfl_cc)
-  })
-  expect_true(all(NDTBEC$NDTBEC %in% unique(sdfl_cc$patchAreasSeral$poly)))
+  sdfl_cc <- suppressWarnings(summarize_one(dfl_cc, 1L))
+  expect_true(all(NDTBEC$NDTBEC %in% unique(sdfl_cc$poly)))
 
   ## SIM
   dfl <- calculatePatchMetricsSeral(
@@ -220,18 +226,19 @@ test_that("BC seral stage calculations work in parallel", {
   )
   expect_true(all(NDTBEC$NDTBEC %in% unique(dfl$patchAreasSeral$poly)))
 
-  sdfl <- suppressWarnings({
-    summarizePatchMetricsSeral(dfl)
-  })
-  expect_true(all(NDTBEC$NDTBEC %in% unique(sdfl$patchAreasSeral$poly)))
+  sdfl <- suppressWarnings(summarize_one(dfl, 1L))
+  expect_true(all(NDTBEC$NDTBEC %in% unique(sdfl$poly)))
 
   if (interactive()) {
     withr::local_package("ggplot2")
 
-    plot_by_class(sdfl$patchAreasSeral, type = "box", page = 1) +
-      geom_point(data = sdfl_cc$patchAreasSeral, col = "darkred", size = 2.5)
+    sdfl$class <- factor(sdfl$class, levels = seral_stages())
+    sdfl_cc$class <- factor(sdfl_cc$class, levels = seral_stages())
 
-    plot_over_time_by_class(sdfl$patchAreasSeral, ylabel = "Mean area (ha)", page = 1)
+    plot_by_class(sdfl, type = "box", page = 1) +
+      geom_point(data = sdfl_cc, col = "darkred", size = 2.5)
+
+    plot_over_time_by_class(sdfl, ylabel = "Mean area (ha)", page = 1)
   }
 
   withr::deferred_run()
