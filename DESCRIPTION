@@ -1,7 +1,7 @@
 Package: nrvtools
 Title: Tools for Summarizing Outputs From Natural Range of Variability
     Simulations
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
     person(c("Alex", "M"), "Chubaty", , "achubaty@for-cast.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7146-8135"))
@@ -24,7 +24,6 @@ Imports:
     ggplot2,
     landscapemetrics,
     methods,
-    pemisc,
     purrr,
     rlang,
     sf,
@@ -38,15 +37,12 @@ Suggests:
     future,
     future.callr,
     knitr,
-    map,
     qs2,
     rmarkdown,
     SpaDES.tools,
     testthat (>= 3.0.0),
     withr
 Remotes:
-    PredictiveEcology/map@development,
-    PredictiveEcology/pemisc@development,
     PredictiveEcology/SpaDES.tools@development
 Config/testthat/edition: 3
 Encoding: UTF-8

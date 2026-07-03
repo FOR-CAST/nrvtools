@@ -1,3 +1,7 @@
+# nrvtools 0.1.1
+
+- Drop the `pemisc` dependency (its `optimalClusterNum` was imported but never used) and the `map` dependency (only reached by data-gated seral-stage integration tests that read `map`/`simList` objects). This removes the unresolvable upstream transitive dependencies `PredictiveEcology/Require@development` (via `pemisc`) and `ropensci/tiler` (via `map`) from the install graph, which had been breaking dependency resolution on CI. The `map`-dependent seral integration tests are removed; `patchAreasSeral()` remains covered by `test-patches.R`.
+
 # nrvtools 0.1.0
 
 This is a breaking release: the replicated-metric summary path is now Arrow-native and memory-bounded, and the former in-memory summarising functions are removed. Consumers (e.g. the `FOR-CAST/NRV_summary` module) must be updated (see the "Breaking changes" below).

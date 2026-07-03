@@ -53,7 +53,6 @@
 #' @importFrom landscapemetrics lsm_l_ed
 #' @importFrom landscapemetrics lsm_l_iji
 #' @importFrom landscapemetrics lsm_p_area
-#' @importFrom pemisc optimalClusterNum
 #' @importFrom purrr transpose
 #' @importFrom sf st_as_sf
 #' @importFrom sf st_read
