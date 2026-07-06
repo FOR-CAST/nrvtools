@@ -45,8 +45,14 @@ patchAges <- function(vtm, sam) {
   ptchs <- landscapemetrics::get_patches(vtm)[[1]] ## identify patches for each species (class)
   ptchs$class_0 <- NULL ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- terra::levels(vtm)[[1]]
-  spp$class <- paste0("class_", spp[["ID"]])
-  names(ptchs) <- spp[match(names(ptchs), spp[["class"]]), ][["values"]]
+  ## terra's category table (RAT): column 1 is the integer category id, column 2 its label.
+  ## Use positional columns, not hard-coded names -- LandR writes them lowercase (`id`/`values`)
+  ## whereas other producers use `ID`, which silently mismatched here and renamed every patch to
+  ## NA -> `ptchs[[NA]]` -> `terra::values(NULL)`.
+  idCol <- names(spp)[[1L]]
+  lblCol <- names(spp)[[2L]]
+  spp$class <- paste0("class_", spp[[idCol]])
+  names(ptchs) <- spp[match(names(ptchs), spp[["class"]]), ][[lblCol]]
 
   df <- rbindlist(lapply(names(ptchs), function(p) {
     ids <- which(!is.na(ptchs[[p]][]))

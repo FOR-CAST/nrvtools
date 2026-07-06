@@ -1,3 +1,7 @@
+# nrvtools 0.1.2
+
+- `patchAges()`: read the terra category table (RAT) by column position, not hard-coded `ID`/`values` names. LandR writes the RAT columns lowercase (`id`/`values`), so the previous `spp[["ID"]]` was NULL and every patch was renamed to `NA`, causing `ptchs[[NA]]` -> `terra::values(NULL)` in the patch-age summary. Now works for both LandR (`id`) and LANDIS-derived (`ID`) vegetation-type maps.
+
 # nrvtools 0.1.1
 
 - Drop the `pemisc` dependency (its `optimalClusterNum` was imported but never used) and the `map` dependency (only reached by data-gated seral-stage integration tests that read `map`/`simList` objects). This removes the unresolvable upstream transitive dependencies `PredictiveEcology/Require@development` (via `pemisc`) and `ropensci/tiler` (via `map`) from the install graph, which had been breaking dependency resolution on CI. The `map`-dependent seral integration tests are removed; `patchAreasSeral()` remains covered by `test-patches.R`.
