@@ -62,10 +62,10 @@ patchAges <- function(vtm, sam) {
       class = p,
       id = terra::values(ptchs[[p]], mat = FALSE)[ids],
       metric = "sam_mdn",
-      sam = sam[ids]
+      sam = sam[ids][[1L]] ## stand-age values at the patch cells, as a vector (sam[ids] is a 1-col df)
     ) |>
       dplyr::group_by(layer, level, class, id, metric) |>
-      dplyr::summarise(value = median(lyr.1, na.rm = TRUE))
+      dplyr::summarise(value = median(sam, na.rm = TRUE), .groups = "drop")
   }))
 
   return(df)

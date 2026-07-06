@@ -1,3 +1,7 @@
+# nrvtools 0.1.3
+
+- `patchAges()`: fix the per-patch median stand-age summary. `sam[ids]` returns a one-column data.frame, so the summary column was not `lyr.1` (`dplyr::summarise(median(lyr.1))` errored with `object 'lyr.1' not found`). Extract the values vector (`sam[ids][[1L]]`) and summarise `median(sam)`. Together with the 0.1.2 RAT fix, `patchAges()` now runs end-to-end.
+
 # nrvtools 0.1.2
 
 - `patchAges()`: read the terra category table (RAT) by column position, not hard-coded `ID`/`values` names. LandR writes the RAT columns lowercase (`id`/`values`), so the previous `spp[["ID"]]` was NULL and every patch was renamed to `NA`, causing `ptchs[[NA]]` -> `terra::values(NULL)` in the patch-age summary. Now works for both LandR (`id`) and LANDIS-derived (`ID`) vegetation-type maps.
