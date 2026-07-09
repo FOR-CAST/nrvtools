@@ -1,3 +1,8 @@
+# nrvtools 0.2.0
+
+- `calculateLandWebMetrics()`, `leadingVegByAgeClass()`, `largePatchCounts()`, `default_landweb_metrics()`: port the v2 `LandWeb_summary` "Leading vegetation type by age class" and "LargePatches" analyses onto the Arrow-native raw-producer contract. `leadingVegByAgeClass()` computes the proportion of each vegetation class in each age class (plus an "All species" roll-up); `largePatchCounts()` bins age, delineates contiguous (age class x vegetation class) patches with `landscapemetrics::get_patches()` (default 4-connectivity, matching the v2 GDAL polygonize) and counts patches at/above each size threshold; `calculateLandWebMetrics()` is the per-replicate wrapper (crops to each reporting polygon, no flammable masking). These metrics pool the NRV distribution across replicates and summary years, so summarize with `time` excluded from the id columns.
+- `plot_nrv_distribution()`: plot the across-replicate distribution of a metric (pooled over the summary period) as a histogram with an optional current-condition reference line, reproducing the v2 LandWeb_summary histograms. Unlike `plot_nrv_envelope()`, this reads the raw per-replicate parquet (not the collapsed envelope) and is not a time series.
+
 # nrvtools 0.1.3
 
 - `patchAges()`: fix the per-patch median stand-age summary. `sam[ids]` returns a one-column data.frame, so the summary column was not `lyr.1` (`dplyr::summarise(median(lyr.1))` errored with `object 'lyr.1' not found`). Extract the values vector (`sam[ids][[1L]]`) and summarise `median(sam)`. Together with the 0.1.2 RAT fix, `patchAges()` now runs end-to-end.

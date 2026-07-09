@@ -4,6 +4,7 @@
 \alias{default_landscape_metrics}
 \alias{default_patch_metrics}
 \alias{default_patch_metrics_seral}
+\alias{default_landweb_metrics}
 \title{Default metrics}
 \usage{
 default_landscape_metrics()
@@ -11,6 +12,8 @@ default_landscape_metrics()
 default_patch_metrics()
 
 default_patch_metrics_seral()
+
+default_landweb_metrics()
 }
 \description{
 Default metrics
@@ -60,6 +63,17 @@ The following patch- and class-level metrics are calculated using
 \item \code{patchAreasSeral}:  patch area (uses \code{lsm_p_area});
 \item the subset of \code{default_patch_metrics()} from \pkg{landscapemetrics}
 (i.e., prefixed with 'lsm_')
+}
+}
+
+\section{Default LandWeb Summary Metrics}{
+
+
+The ported v2 \code{LandWeb_summary} analyses (see \code{\link[=calculateLandWebMetrics]{calculateLandWebMetrics()}}):
+\itemize{
+\item \code{leadingVegByAgeClass}: proportion of each vegetation class by age class;
+\item \code{largePatchCounts}: number/total-area of large patches by size class,
+vegetation class and age class.
 }
 }
 

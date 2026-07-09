@@ -76,3 +76,17 @@ default_patch_metrics_seral <- function() {
   lsm_default <- pm_default[grepl("lsm_", pm_default)]
   append(list("patchAreasSeral"), lsm_default)
 }
+
+#' @section Default LandWeb Summary Metrics:
+#'
+#' The ported v2 `LandWeb_summary` analyses (see [calculateLandWebMetrics()]):
+#'
+#' - `leadingVegByAgeClass`: proportion of each vegetation class by age class;
+#' - `largePatchCounts`: number/total-area of large patches by size class,
+#'   vegetation class and age class.
+#'
+#' @export
+#' @rdname default_metrics
+default_landweb_metrics <- function() {
+  list("leadingVegByAgeClass", "largePatchCounts")
+}

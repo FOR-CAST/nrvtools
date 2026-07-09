@@ -1,5 +1,5 @@
 utils::globalVariables(c(
-  "class", "time"
+  "class", "time", "count", "PANEL"
 ))
 
 #' NRV summary plots
@@ -143,5 +143,97 @@ plot_nrv_envelope <- function(
   gg +
     ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free_y") +
     ggplot2::labs(x = "time", y = ylab) +
+    ggplot2::theme_bw()
+}
+
+## collect a raw long metric table from parquet paths/root, an Arrow dataset/query, or a data.frame.
+.collect_nrv_values <- function(x) {
+  if (is.data.frame(x)) {
+    return(x)
+  }
+  ds <- if (inherits(x, c("Dataset", "arrow_dplyr_query"))) x else open_nrv_dataset(x)
+  if (is.null(ds)) {
+    return(NULL)
+  }
+  as.data.frame(dplyr::collect(ds))
+}
+
+#' Plot the across-replicate distribution of a metric, with a reference line
+#'
+#' The LandWeb-summary counterpart to [plot_nrv_envelope()]: instead of an
+#' envelope over `time`, it plots the *distribution across replicates* (pooled over
+#' the summary period) of the raw per-replicate values as a histogram, one panel
+#' per faceting-column combination, with an optional red vertical reference line at
+#' the current-condition value. This reproduces the v2 `LandWeb_summary` histograms
+#' ("Proportion in NRV" vs the metric, with the current-condition marker), which
+#' are deliberately not time series.
+#'
+#' Because the histogram needs the raw per-replicate values (not the collapsed
+#' envelope), pass the replicate parquet(s) -- as produced by [write_nrv_parquet()]
+#' -- rather than a [summarize_nrv()] envelope.
+#'
+#' @param x Raw per-replicate values: parquet file paths / a dataset root (see
+#'   [open_nrv_dataset()]), an Arrow `Dataset`/query, or a `data.frame`.
+#' @param cc Optional current-condition values (same forms as `x`); their per-panel
+#'   value is drawn as a red vertical reference line. `NULL` (default) omits it.
+#' @param value_col Name of the value column to bin (default `"value"`).
+#' @param facet Candidate faceting columns; those present and varying become the
+#'   panel label (default `c("poly", "class", "metric", "metric.1")`).
+#' @param bins Number of histogram bins (default `30`).
+#' @param xlab,ylab Axis labels.
+#'
+#' @return A `ggplot` object, or `NULL` for empty input.
+#'
+#' @importFrom rlang .data
+#' @export
+#' @seealso [plot_nrv_envelope()], [calculateLandWebMetrics()]
+plot_nrv_distribution <- function(
+  x,
+  cc = NULL,
+  value_col = "value",
+  facet = c("poly", "class", "metric", "metric.1"),
+  bins = 30,
+  xlab = value_col,
+  ylab = "Proportion in NRV"
+) {
+  df <- .collect_nrv_values(x)
+  if (is.null(df) || !nrow(df)) {
+    return(invisible(NULL))
+  }
+  facetV <- intersect(facet, names(df))
+  facetV <- facetV[vapply(facetV, function(cc) length(unique(df[[cc]])) > 1L, logical(1))]
+  panel <- function(d) if (length(facetV)) do.call(paste, c(d[facetV], sep = " | ")) else "all"
+  df[[".panel"]] <- panel(df)
+
+  gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]])) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(count / tapply(count, PANEL, sum)[PANEL])),
+      bins = bins,
+      colour = "grey40",
+      fill = "grey70"
+    )
+
+  if (!is.null(cc)) {
+    ccdf <- .collect_nrv_values(cc)
+    if (!is.null(ccdf) && nrow(ccdf)) {
+      ccdf[[".panel"]] <- panel(ccdf)
+      ccPanel <- stats::aggregate(
+        stats::as.formula(paste(value_col, "~ .panel")),
+        data = ccdf,
+        FUN = function(v) mean(v, na.rm = TRUE)
+      )
+      gg <- gg +
+        ggplot2::geom_vline(
+          data = ccPanel,
+          ggplot2::aes(xintercept = .data[[value_col]]),
+          colour = "red",
+          linewidth = 1
+        )
+    }
+  }
+
+  gg +
+    ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free") +
+    ggplot2::labs(x = xlab, y = ylab) +
     ggplot2::theme_bw()
 }
