@@ -1,3 +1,12 @@
+# nrvtools 0.2.2
+
+- `patchAges()`, `patchAreas()`, and `.cat_labels()` (used by `leadingVegByAgeClass()` /
+  `largePatchCounts()`) now return an empty / all-`NA` result for a tiny or empty reporting subregion
+  (one with no forested pixels, whose cropped vegetation-type map has no category table) instead of
+  erroring with "attempt to select less than one element". This surfaced once reporting-polygon
+  subregions stopped being collapsed together. `patchAreas()` also now reads the RAT label from its
+  positional (non-value) column rather than a hard-coded "values" name.
+
 # nrvtools 0.2.1
 
 - `plot_leading_boxplot()` and `plot_largepatch_histogram()`: the v2-form LandWeb-summary plots for a single reporting unit. `plot_leading_boxplot()` draws horizontal green age-class box-and-whiskers of the across-replicate proportion of forest area, with the current condition as a red dot (replacing the earlier busy distribution histograms for the Leading analysis). `plot_largepatch_histogram()` draws one file per species with four age-class panels (young to old), each the across-replicate "Proportion in NRV" of the patch count, with a red current-condition vertical line.

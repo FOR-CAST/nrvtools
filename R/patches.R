@@ -24,10 +24,18 @@ patchAreas <- function(vtm) {
   areas <- landscapemetrics::lsm_p_area(vtm)
   areas <- areas[areas$class != 0, ] ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- terra::levels(vtm)[[1]]
+  ## a tiny / empty subregion (no forested pixels) yields a non-categorical crop (RAT NULL / < 2
+  ## cols): nothing to label, return the (already empty) areas rather than erroring.
+  if (is.null(spp) || NCOL(spp) < 2L || nrow(areas) == 0L) {
+    return(areas[0, , drop = FALSE])
+  }
   idcol <- .rat_value_col(spp)
-  sppNames <- spp[match(areas$class, spp[[idcol]]), ][["values"]]
+  ## label column = the positional non-value column (terra names it "values"/"category"/etc. -- do
+  ## not hard-code "values", or RATs that use another name return NA and leave raw integer classes).
+  lblcol <- setdiff(seq_len(NCOL(spp)), idcol)[[1L]]
+  sppNames <- spp[match(areas$class, spp[[idcol]]), ][[lblcol]]
 
-  areas <- dplyr::mutate(areas, class = sppNames)
+  areas <- dplyr::mutate(areas, class = as.character(sppNames))
 
   return(areas)
 }
@@ -42,9 +50,18 @@ patchAreas <- function(vtm) {
 #'
 #' @export
 patchAges <- function(vtm, sam) {
+  spp <- terra::levels(vtm)[[1]]
+  ## a tiny / empty subregion (no forested pixels) yields a non-categorical crop (RAT NULL / < 2
+  ## cols): there are no patches to age, so return an empty result rather than erroring on
+  ## `names(spp)[[1L]]` below.
+  if (is.null(spp) || NCOL(spp) < 2L || nrow(spp) == 0L) {
+    return(data.frame(
+      layer = integer(0), level = character(0), class = character(0),
+      id = integer(0), metric = character(0), value = numeric(0)
+    ))
+  }
   ptchs <- landscapemetrics::get_patches(vtm)[[1]] ## identify patches for each species (class)
   ptchs$class_0 <- NULL ## class 0 has no forested vegetation (e.g., recently disturbed)
-  spp <- terra::levels(vtm)[[1]]
   ## terra's category table (RAT): column 1 is the integer category id, column 2 its label.
   ## Use positional columns, not hard-coded names -- LandR writes them lowercase (`id`/`values`)
   ## whereas other producers use `ID`, which silently mismatched here and renamed every patch to

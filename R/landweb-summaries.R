@@ -17,8 +17,14 @@ utils::globalVariables(c(
 }
 
 ## decode a categorical SpatRaster's cell values to their labels (NA where cell is NA / unmatched).
+## A tiny / empty subregion (no forested pixels) yields a non-categorical raster (RAT NULL / < 2
+## cols); return all-NA so the callers (leadingVegByAgeClass / largePatchCounts) drop it to an empty
+## (zero-filled) result rather than erroring in `.rat_label_col()`.
 .cat_labels <- function(ras) {
   rat <- terra::levels(ras)[[1]]
+  if (is.null(rat) || NCOL(rat) < 2L || nrow(rat) == 0L) {
+    return(rep(NA_character_, terra::ncell(ras)))
+  }
   idc <- .rat_value_col(rat)
   lblc <- .rat_label_col(rat, idc)
   vals <- terra::values(ras, mat = FALSE)
