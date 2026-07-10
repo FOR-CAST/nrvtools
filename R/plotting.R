@@ -2,6 +2,123 @@ utils::globalVariables(c(
   "class", "time", "count", "PANEL"
 ))
 
+#' Leading-vegetation age-class boxplot (v2 LandWeb_summary form)
+#'
+#' Reproduces the v2 "Leading vegetation by age class" boxplot for a single
+#' reporting unit (subregion x species): horizontal box-and-whiskers of the
+#' across-replicate proportion of forest area in each age class, with the
+#' current-condition proportion marked as a red dot. Built with \pkg{ggplot2}
+#' (the v2 original used base graphics).
+#'
+#' @param df A `data.frame` of the raw per-replicate values for one unit, with an
+#'   age-class column (`class_col`) and a proportion column (`value_col`); one row
+#'   per replicate x summary-year x age class.
+#' @param cc Optional `data.frame` of current-condition values (same columns as
+#'   `df`), one value per age class, drawn as red dots. `NULL` omits them.
+#' @param ageClasses Age-class labels in order young -> old; the y-axis is drawn
+#'   bottom (`Young`) to top (`Old`). Default `c("Young","Immature","Mature","Old")`.
+#' @param value_col,class_col Column names for the proportion and age class.
+#' @param xlab,title Axis label and plot title.
+#'
+#' @return A `ggplot` object (`NULL` for empty input).
+#'
+#' @importFrom rlang .data
+#' @export
+#' @seealso [plot_largepatch_histogram()], [leadingVegByAgeClass()]
+plot_leading_boxplot <- function(
+  df,
+  cc = NULL,
+  ageClasses = c("Young", "Immature", "Mature", "Old"),
+  value_col = "value",
+  class_col = "class",
+  xlab = "Proportion of forest area",
+  title = NULL
+) {
+  if (is.null(df) || !nrow(df)) {
+    return(invisible(NULL))
+  }
+  df[[class_col]] <- factor(df[[class_col]], levels = rev(ageClasses))
+  gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]], y = .data[[class_col]])) +
+    ggplot2::geom_boxplot(fill = "limegreen", outlier.size = 0.8) +
+    ggplot2::coord_cartesian(xlim = c(0, 1)) +
+    ggplot2::labs(x = xlab, y = "Age class", title = title) +
+    ggplot2::theme_bw()
+
+  if (!is.null(cc) && nrow(cc)) {
+    cc[[class_col]] <- factor(cc[[class_col]], levels = rev(ageClasses))
+    gg <- gg +
+      ggplot2::geom_point(
+        data = cc,
+        ggplot2::aes(x = .data[[value_col]], y = .data[[class_col]]),
+        colour = "red",
+        size = 4
+      )
+  }
+  gg
+}
+
+#' Large-patch age-class histogram (v2 LandWeb_summary form, one file per species)
+#'
+#' Reproduces the v2 "LargePatches" histogram for a single reporting unit
+#' (subregion x species x size threshold), but grouped one file per species with
+#' **four age-class panels** (young -> old) instead of one file per age class.
+#' Each panel is the across-replicate distribution ("Proportion in NRV") of the
+#' number of patches at or above the size threshold, with the current-condition
+#' count marked as a red vertical line.
+#'
+#' @param df A `data.frame` of the raw per-replicate values for one
+#'   species x size unit, with an age-class column (`class_col`) and a count
+#'   column (`value_col`); one row per replicate x summary-year x age class.
+#' @param cc Optional `data.frame` of current-condition values (same columns),
+#'   one per age class, drawn as red vertical lines. `NULL` omits them.
+#' @param ageClasses Age-class labels in order young -> old (panel order).
+#' @param value_col,class_col Column names for the count and age class.
+#' @param bins Number of histogram bins (default `30`).
+#' @param xlab,title Axis label and plot title.
+#'
+#' @return A `ggplot` object (`NULL` for empty input).
+#'
+#' @importFrom rlang .data
+#' @export
+#' @seealso [plot_leading_boxplot()], [largePatchCounts()]
+plot_largepatch_histogram <- function(
+  df,
+  cc = NULL,
+  ageClasses = c("Young", "Immature", "Mature", "Old"),
+  value_col = "value",
+  class_col = "class",
+  bins = 30,
+  xlab = "Number of patches",
+  title = NULL
+) {
+  if (is.null(df) || !nrow(df)) {
+    return(invisible(NULL))
+  }
+  df[[class_col]] <- factor(df[[class_col]], levels = ageClasses)
+  gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]])) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(count / tapply(count, PANEL, sum)[PANEL])),
+      bins = bins,
+      colour = "grey40",
+      fill = "grey70"
+    ) +
+    ggplot2::facet_wrap(ggplot2::vars(.data[[class_col]]), ncol = 2, drop = FALSE) +
+    ggplot2::labs(x = xlab, y = "Proportion in NRV", title = title) +
+    ggplot2::theme_bw()
+
+  if (!is.null(cc) && nrow(cc)) {
+    cc[[class_col]] <- factor(cc[[class_col]], levels = ageClasses)
+    gg <- gg +
+      ggplot2::geom_vline(
+        data = cc,
+        ggplot2::aes(xintercept = .data[[value_col]]),
+        colour = "red",
+        linewidth = 1
+      )
+  }
+  gg
+}
+
 #' NRV summary plots
 #'
 #' @param summary_df a range-of-variation summary `data.frame` from

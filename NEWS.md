@@ -1,3 +1,7 @@
+# nrvtools 0.2.1
+
+- `plot_leading_boxplot()` and `plot_largepatch_histogram()`: the v2-form LandWeb-summary plots for a single reporting unit. `plot_leading_boxplot()` draws horizontal green age-class box-and-whiskers of the across-replicate proportion of forest area, with the current condition as a red dot (replacing the earlier busy distribution histograms for the Leading analysis). `plot_largepatch_histogram()` draws one file per species with four age-class panels (young to old), each the across-replicate "Proportion in NRV" of the patch count, with a red current-condition vertical line.
+
 # nrvtools 0.2.0
 
 - `calculateLandWebMetrics()`, `leadingVegByAgeClass()`, `largePatchCounts()`, `default_landweb_metrics()`: port the v2 `LandWeb_summary` "Leading vegetation type by age class" and "LargePatches" analyses onto the Arrow-native raw-producer contract. `leadingVegByAgeClass()` computes the proportion of each vegetation class in each age class (plus an "All species" roll-up); `largePatchCounts()` bins age, delineates contiguous (age class x vegetation class) patches with `landscapemetrics::get_patches()` (default 4-connectivity, matching the v2 GDAL polygonize) and counts patches at/above each size threshold; `calculateLandWebMetrics()` is the per-replicate wrapper (crops to each reporting polygon, no flammable masking). These metrics pool the NRV distribution across replicates and summary years, so summarize with `time` excluded from the id columns.
