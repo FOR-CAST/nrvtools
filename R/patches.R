@@ -144,6 +144,19 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
     vc <- terra::crop(v, subpoly)
     vcm <- terra::mask(vc, subpoly)
 
+    ## skip empty subregions (no forested pixels after crop/mask): every metric would either error
+    ## (landscapemetrics::get_patches / lsm_* on an all-NA raster -> "attempt to select less than one
+    ## element") or be trivially empty. Return an empty table per metric so the subregion still
+    ## appears (with no rows) in the assembled output.
+    if (terra::global(vcm, "notNA")[[1L]] == 0) {
+      empty <- data.frame(
+        layer = integer(0), level = character(0), class = character(0),
+        id = integer(0), metric = character(0), value = numeric(0)
+      )
+      out <- stats::setNames(replicate(length(funList), empty, simplify = FALSE), funList)
+      return(out)
+    }
+
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
 

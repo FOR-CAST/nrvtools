@@ -1,3 +1,7 @@
+# nrvtools 0.2.3
+
+- `patchStats()` skips a reporting subregion with no forested pixels (an all-`NA` crop) instead of erroring, guarding the whole metric set at once (`landscapemetrics::get_patches()`/`lsm_*` fail on an all-`NA` raster). The per-metric RAT guards added in 0.2.2 did not catch this because the category table persists even when all cells are `NA`.
+
 # nrvtools 0.2.2
 
 - `patchAges()`, `patchAreas()`, and `.cat_labels()` (used by `leadingVegByAgeClass()` /
