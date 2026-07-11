@@ -8,7 +8,11 @@ plot_nrv_envelope(
   nrv_df,
   type = c("ribbon", "boxplot"),
   facet = c("poly", "class", "metric", "metric.1"),
-  ylab = "value"
+  ylab = "value",
+  title = NULL,
+  ncol = 4,
+  nrow = 3,
+  page = NULL
 )
 }
 \arguments{
@@ -24,6 +28,16 @@ or a zero-row input returns \code{NULL}.}
 into the panel label (default \code{c("poly", "class", "metric", "metric.1")}).}
 
 \item{ylab}{Y-axis label.}
+
+\item{title}{Optional plot title (e.g. the study area and metric name).}
+
+\item{ncol, nrow}{Panel grid per page when paginating (default \code{4} x \code{3}).}
+
+\item{page}{Page to render. \code{NULL} (default) draws every panel in one figure
+via \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}; an integer paginates the panels across pages via
+\code{\link[ggforce:facet_wrap_paginate]{ggforce::facet_wrap_paginate()}} so a large panel set is split into multiple
+figures. Use \code{\link[ggforce:n_pages]{ggforce::n_pages()}} on the \code{page = 1} result to get the page
+count, then loop \code{page} to write one file per page.}
 }
 \value{
 A \code{ggplot} object, or \code{NULL} for empty input.

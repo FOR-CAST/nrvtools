@@ -1,3 +1,7 @@
+# nrvtools 0.2.4
+
+- `plot_nrv_envelope()` gains a `title` argument and optional pagination (`page`, `ncol`, `nrow`): with `page = NULL` it draws every panel in one figure as before, while an integer `page` splits the panels across pages via `ggforce::facet_wrap_paginate()` (use `ggforce::n_pages()` on the `page = 1` result to get the page count). This lets a large panel set be written as several PNGs instead of one crammed figure.
+
 # nrvtools 0.2.3
 
 - `patchStats()` skips a reporting subregion with no forested pixels (an all-`NA` crop) instead of erroring, guarding the whole metric set at once (`landscapemetrics::get_patches()`/`lsm_*` fail on an all-`NA` raster). The per-metric RAT guards added in 0.2.2 did not catch this because the category table persists even when all cells are `NA`.

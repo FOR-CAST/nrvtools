@@ -202,6 +202,13 @@ plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
 #' @param facet Candidate faceting columns; those present and varying are combined
 #'   into the panel label (default `c("poly", "class", "metric", "metric.1")`).
 #' @param ylab Y-axis label.
+#' @param title Optional plot title (e.g. the study area and metric name).
+#' @param ncol,nrow Panel grid per page when paginating (default `4` x `3`).
+#' @param page Page to render. `NULL` (default) draws every panel in one figure
+#'   via [ggplot2::facet_wrap()]; an integer paginates the panels across pages via
+#'   [ggforce::facet_wrap_paginate()] so a large panel set is split into multiple
+#'   figures. Use [ggforce::n_pages()] on the `page = 1` result to get the page
+#'   count, then loop `page` to write one file per page.
 #'
 #' @return A `ggplot` object, or `NULL` for empty input.
 #'
@@ -211,7 +218,11 @@ plot_nrv_envelope <- function(
   nrv_df,
   type = c("ribbon", "boxplot"),
   facet = c("poly", "class", "metric", "metric.1"),
-  ylab = "value"
+  ylab = "value",
+  title = NULL,
+  ncol = 4,
+  nrow = 3,
+  page = NULL
 ) {
   type <- match.arg(type)
   if (is.null(nrv_df) || !nrow(nrv_df)) {
@@ -257,10 +268,19 @@ plot_nrv_envelope <- function(
       ggplot2::geom_line(ggplot2::aes(y = .data[["mean"]]))
   }
 
-  gg +
-    ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free_y") +
-    ggplot2::labs(x = "time", y = ylab) +
-    ggplot2::theme_bw()
+  facet_layer <- if (is.null(page)) {
+    ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free_y")
+  } else {
+    ggforce::facet_wrap_paginate(
+      stats::as.formula("~ .panel"),
+      ncol = ncol,
+      nrow = nrow,
+      page = page,
+      scales = "free_y"
+    )
+  }
+
+  gg + facet_layer + ggplot2::labs(x = "time", y = ylab, title = title) + ggplot2::theme_bw()
 }
 
 ## collect a raw long metric table from parquet paths/root, an Arrow dataset/query, or a data.frame.
