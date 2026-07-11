@@ -268,7 +268,11 @@ plot_nrv_envelope <- function(
       ggplot2::geom_line(ggplot2::aes(y = .data[["mean"]]))
   }
 
-  facet_layer <- if (is.null(page)) {
+  ## no categorical column varies -> a single series: draw one plain panel (no meaningless facet
+  ## strip). Otherwise facet by the panel label, paginating when `page` is given.
+  facet_layer <- if (!length(facet)) {
+    NULL
+  } else if (is.null(page)) {
     ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free_y")
   } else {
     ggforce::facet_wrap_paginate(

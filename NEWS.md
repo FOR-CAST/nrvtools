@@ -1,3 +1,7 @@
+# nrvtools 0.2.6
+
+- `plot_nrv_envelope()` draws a single plain panel (no placeholder "all" facet strip) when none of the candidate faceting columns vary, e.g. a per-subregion landscape-metric envelope that has no class dimension.
+
 # nrvtools 0.2.5
 
 - `label_vegtype_classes()` (new, exported) relabels integer vegetation-type class codes in a `class` column with their species labels from a categorical VTM's RAT, leaving already-labelled classes and non-matches unchanged (idempotent). `patchStats()` now applies it so class-level `lsm_c_*` patch metrics report species names instead of raw integer codes, matching `patchAges()` / `patchAreas()`.
