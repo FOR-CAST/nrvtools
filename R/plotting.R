@@ -32,7 +32,8 @@ plot_leading_boxplot <- function(
   value_col = "value",
   class_col = "class",
   xlab = "Proportion of forest area",
-  title = NULL
+  title = NULL,
+  caption = NULL
 ) {
   if (is.null(df) || !nrow(df)) {
     return(invisible(NULL))
@@ -41,7 +42,7 @@ plot_leading_boxplot <- function(
   gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]], y = .data[[class_col]])) +
     ggplot2::geom_boxplot(fill = "limegreen", outlier.size = 0.8) +
     ggplot2::coord_cartesian(xlim = c(0, 1)) +
-    ggplot2::labs(x = xlab, y = "Age class", title = title) +
+    ggplot2::labs(x = xlab, y = "Age class", title = title, caption = caption) +
     ggplot2::theme_bw()
 
   if (!is.null(cc) && nrow(cc)) {

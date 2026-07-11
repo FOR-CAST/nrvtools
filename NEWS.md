@@ -1,3 +1,8 @@
+# nrvtools 0.2.7
+
+- `subregion_forested_area()` (new, exported) tabulates the forested area (ha) of each leading-vegetation species within each subregion of a reporting layer from a categorical vegetation-type map, with an "All species" total per subregion (the v2 / NW_AB comparative-boxplot area calculation).
+- `plot_leading_boxplot()` gains a `caption` argument, rendered bottom-right below the figure (e.g. the subregion's total forested area).
+
 # nrvtools 0.2.6
 
 - `plot_nrv_envelope()` draws a single plain panel (no placeholder "all" facet strip) when none of the candidate faceting columns vary, e.g. a per-subregion landscape-metric envelope that has no class dimension.

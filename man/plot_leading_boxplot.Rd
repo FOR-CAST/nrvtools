@@ -11,7 +11,8 @@ plot_leading_boxplot(
   value_col = "value",
   class_col = "class",
   xlab = "Proportion of forest area",
-  title = NULL
+  title = NULL,
+  caption = NULL
 )
 }
 \arguments{

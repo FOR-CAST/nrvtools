@@ -116,6 +116,26 @@ testthat::test_that("label_vegtype_classes() maps integer codes and leaves label
   testthat::expect_named(label_vegtype_classes(data.frame(value = 1:2), vtm), "value")
 })
 
+testthat::test_that("subregion_forested_area() tabulates ha per subregion x species", {
+  vtm <- .create_mock_vtm() ## 5x5: forest=8, grass=8, water=9 cells (all classified)
+  cell_ha <- prod(terra::res(vtm)) / 1e4
+  poly <- terra::as.polygons(terra::ext(vtm), crs = terra::crs(vtm))
+  poly$Name <- "Z1"
+
+  a <- subregion_forested_area(vtm, poly, "Name")
+  get <- function(sp) a$area_ha[a$poly == "Z1" & a$vegCover == sp]
+
+  testthat::expect_equal(get("forest"), 8 * cell_ha)
+  testthat::expect_equal(get("grass"), 8 * cell_ha)
+  testthat::expect_equal(get("water"), 9 * cell_ha)
+  ## the "All species" row is the subregion total
+  testthat::expect_equal(get("All species"), 25 * cell_ha)
+  ## all_label = NULL drops the totals row
+  testthat::expect_false(
+    "All species" %in% subregion_forested_area(vtm, poly, "Name", all_label = NULL)$vegCover
+  )
+})
+
 testthat::test_that(".rat_value_col() finds the value column across RAT naming conventions", {
   ## terra RATs name the cell-value column "ID" for some rasters and "value" for others (e.g. the
   ## seral-stage map); the label column is "values". Must pick the value column, not the label.

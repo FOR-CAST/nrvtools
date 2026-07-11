@@ -51,6 +51,69 @@ label_vegtype_classes <- function(df, vtm, class_col = "class") {
   df
 }
 
+#' Forested area (ha) per subregion and leading species
+#'
+#' Tabulates the forested area, in hectares, of each leading-vegetation species
+#' within each subregion of a reporting layer, from a categorical
+#' vegetation-type map (the leading-species map). Mirrors the v2 LandWeb /
+#' NW_AB comparative-boxplot area calculation: extract the map over the
+#' subregion polygons, count cells per species, and multiply by the cell area.
+#' An `all_label` ("All species") row per subregion carries the subregion's
+#' total forested area.
+#'
+#' @param vtm A categorical vegetation-type `SpatRaster` (leading-species map);
+#'   assumed to have a projected CRS in metres (cell area = `prod(res(vtm))`).
+#' @param polys Subregion polygons (`SpatVector`, `sf`, or `Spatial`); reprojected
+#'   to `vtm` as needed.
+#' @param poly_col Name of the column in `polys` holding the subregion label.
+#' @param all_label Label for the per-subregion total row (default
+#'   `"All species"`); `NULL` omits the totals.
+#'
+#' @return A `data.frame` with columns `poly`, `vegCover`, `n_pixels`, `area_ha`.
+#'
+#' @export
+#' @seealso [plot_leading_boxplot()]
+subregion_forested_area <- function(vtm, polys, poly_col, all_label = "All species") {
+  if (!inherits(polys, "SpatVector")) {
+    polys <- terra::vect(polys)
+  }
+  polys <- terra::project(polys, vtm)
+  cell_ha <- prod(terra::res(vtm)) / 1e4 ## projected CRS in metres -> ha
+  ext <- terra::extract(vtm, polys) ## ID + the (factor) species-label column
+  vcol <- setdiff(names(ext), "ID")[[1L]]
+  poly_name <- as.character(polys[[poly_col]][[1L]])
+  df <- data.frame(
+    poly = poly_name[ext[["ID"]]],
+    vegCover = as.character(ext[[vcol]]),
+    stringsAsFactors = FALSE
+  )
+  df <- df[!is.na(df[["vegCover"]]) & !is.na(df[["poly"]]), , drop = FALSE]
+  empty <- data.frame(
+    poly = character(0),
+    vegCover = character(0),
+    n_pixels = integer(0),
+    area_ha = numeric(0)
+  )
+  if (!nrow(df)) {
+    return(empty)
+  }
+  per <- df |>
+    dplyr::count(.data[["poly"]], .data[["vegCover"]], name = "n_pixels") |>
+    dplyr::mutate(area_ha = .data[["n_pixels"]] * cell_ha)
+  if (!is.null(all_label)) {
+    totals <- per |>
+      dplyr::group_by(.data[["poly"]]) |>
+      dplyr::summarise(
+        n_pixels = sum(.data[["n_pixels"]]),
+        area_ha = sum(.data[["area_ha"]]),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(vegCover = all_label)
+    per <- dplyr::bind_rows(per, totals)
+  }
+  as.data.frame(per[, c("poly", "vegCover", "n_pixels", "area_ha")])
+}
+
 #' Calculate areas for each patch (per species)
 #'
 #' @template vtm
