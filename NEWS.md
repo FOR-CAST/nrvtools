@@ -1,3 +1,7 @@
+# nrvtools 0.2.5
+
+- `label_vegtype_classes()` (new, exported) relabels integer vegetation-type class codes in a `class` column with their species labels from a categorical VTM's RAT, leaving already-labelled classes and non-matches unchanged (idempotent). `patchStats()` now applies it so class-level `lsm_c_*` patch metrics report species names instead of raw integer codes, matching `patchAges()` / `patchAreas()`.
+
 # nrvtools 0.2.4
 
 - `plot_nrv_envelope()` gains a `title` argument and optional pagination (`page`, `ncol`, `nrow`): with `page = NULL` it draws every panel in one figure as before, while an integer `page` splits the panels across pages via `ggforce::facet_wrap_paginate()` (use `ggforce::n_pages()` on the `page = 1` result to get the page count). This lets a large panel set be written as several PNGs instead of one crammed figure.

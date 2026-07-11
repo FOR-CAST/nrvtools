@@ -12,6 +12,45 @@ utils::globalVariables(c(
   if (length(hit) >= 1L) hit[[1L]] else 1L
 }
 
+#' Relabel integer vegetation-type class codes with their species labels
+#'
+#' Replaces integer vegetation-type category codes in a `class` column with the
+#' matching species labels from a categorical vegetation-type map's RAT
+#' (`terra::levels(vtm)[[1]]`). Class-level \pkg{landscapemetrics} metrics
+#' (`lsm_c_*()`) report the raw integer category, whereas the nrvtools producers
+#' ([patchAges()] / [patchAreas()]) already return labelled classes -- this
+#' relabels the former and leaves the latter unchanged. Idempotent: any class
+#' value that is not an integer code (e.g. an already-mapped species name) or
+#' that has no RAT match is kept as-is. Handles a `class` column stored as
+#' numeric (raw metric output) or as character (e.g. after a mixed-type column is
+#' written to and read back from parquet).
+#'
+#' @param df A `data.frame`/`tibble` with a class column (`class_col`); returned
+#'   unchanged if `NULL`, empty, or lacking that column.
+#' @param vtm A categorical vegetation-type `SpatRaster`; its RAT supplies the
+#'   code -> label lookup. A raster with no usable RAT leaves `df` unchanged.
+#' @param class_col Name of the class column to relabel (default `"class"`).
+#'
+#' @return `df` with `class_col` relabelled where codes matched the RAT.
+#'
+#' @export
+#' @seealso [patchStats()], [patchAreas()]
+label_vegtype_classes <- function(df, vtm, class_col = "class") {
+  if (is.null(df) || !nrow(df) || !(class_col %in% names(df))) {
+    return(df)
+  }
+  rat <- terra::levels(vtm)[[1]]
+  if (is.null(rat) || NCOL(rat) < 2L) {
+    return(df)
+  }
+  idcol <- .rat_value_col(rat)
+  lblcol <- setdiff(seq_len(NCOL(rat)), idcol)[[1L]]
+  code <- suppressWarnings(as.integer(as.character(df[[class_col]])))
+  lab <- rat[match(code, rat[[idcol]]), ][[lblcol]]
+  df[[class_col]] <- ifelse(is.na(lab), as.character(df[[class_col]]), as.character(lab))
+  df
+}
+
 #' Calculate areas for each patch (per species)
 #'
 #' @template vtm
@@ -56,8 +95,12 @@ patchAges <- function(vtm, sam) {
   ## `names(spp)[[1L]]` below.
   if (is.null(spp) || NCOL(spp) < 2L || nrow(spp) == 0L) {
     return(data.frame(
-      layer = integer(0), level = character(0), class = character(0),
-      id = integer(0), metric = character(0), value = numeric(0)
+      layer = integer(0),
+      level = character(0),
+      class = character(0),
+      id = integer(0),
+      metric = character(0),
+      value = numeric(0)
     ))
   }
   ptchs <- landscapemetrics::get_patches(vtm)[[1]] ## identify patches for each species (class)
@@ -150,8 +193,12 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
     ## appears (with no rows) in the assembled output.
     if (terra::global(vcm, "notNA")[[1L]] == 0) {
       empty <- data.frame(
-        layer = integer(0), level = character(0), class = character(0),
-        id = integer(0), metric = character(0), value = numeric(0)
+        layer = integer(0),
+        level = character(0),
+        class = character(0),
+        id = integer(0),
+        metric = character(0),
+        value = numeric(0)
       )
       out <- stats::setNames(replicate(length(funList), empty, simplify = FALSE), funList)
       return(out)
@@ -167,6 +214,9 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
       } else {
         dt <- fn(vcm)
       }
+      ## relabel raw integer vegType class codes (class-level lsm_c_* output) with species names via
+      ## the VTM RAT; patchAges/patchAreas already return labelled classes and pass through unchanged.
+      dt <- label_vegtype_classes(dt, vcm)
       message("...done!")
 
       dt

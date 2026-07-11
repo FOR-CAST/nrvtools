@@ -96,6 +96,26 @@ testthat::test_that("patchAreasSeral works correctly", {
   testthat::expect_equal(early_area, 8 * prod(terra::res(ssm)) / 1e4) ## areas in ha
 })
 
+testthat::test_that("label_vegtype_classes() maps integer codes and leaves labels/non-matches alone", {
+  vtm <- .create_mock_vtm() ## RAT: 1=forest, 2=grass, 3=water
+
+  ## integer-coded classes (as from lsm_c_*), stored as character (post-parquet) or numeric
+  df_chr <- data.frame(class = c("1", "2", "3"), value = 1:3, stringsAsFactors = FALSE)
+  testthat::expect_equal(label_vegtype_classes(df_chr, vtm)$class, c("forest", "grass", "water"))
+  df_num <- data.frame(class = c(1, 2, 3), value = 1:3)
+  testthat::expect_equal(label_vegtype_classes(df_num, vtm)$class, c("forest", "grass", "water"))
+
+  ## already-labelled classes (patchAges/patchAreas) and codes absent from the RAT pass through
+  df_mixed <- data.frame(class = c("1", "grass", "9"), value = 1:3, stringsAsFactors = FALSE)
+  testthat::expect_equal(label_vegtype_classes(df_mixed, vtm)$class, c("forest", "grass", "9"))
+
+  ## idempotent, and a no-op for empty / class-less / RAT-less input
+  once <- label_vegtype_classes(df_chr, vtm)
+  testthat::expect_equal(label_vegtype_classes(once, vtm)$class, once$class)
+  testthat::expect_equal(label_vegtype_classes(df_chr[0, ], vtm)$class, character(0))
+  testthat::expect_named(label_vegtype_classes(data.frame(value = 1:2), vtm), "value")
+})
+
 testthat::test_that(".rat_value_col() finds the value column across RAT naming conventions", {
   ## terra RATs name the cell-value column "ID" for some rasters and "value" for others (e.g. the
   ## seral-stage map); the label column is "values". Must pick the value column, not the label.
