@@ -19,6 +19,8 @@ utils::globalVariables(c(
 #'   bottom (`Young`) to top (`Old`). Default `c("Young","Immature","Mature","Old")`.
 #' @param value_col,class_col Column names for the proportion and age class.
 #' @param xlab,title Axis label and plot title.
+#' @param caption Optional caption, rendered bottom-right below the figure (e.g.
+#'   the subregion's total forested area). `NULL` omits it.
 #'
 #' @return A `ggplot` object (`NULL` for empty input).
 #'

@@ -29,6 +29,9 @@ bottom (\code{Young}) to top (\code{Old}). Default \code{c("Young","Immature","M
 \item{value_col, class_col}{Column names for the proportion and age class.}
 
 \item{xlab, title}{Axis label and plot title.}
+
+\item{caption}{Optional caption, rendered bottom-right below the figure (e.g.
+the subregion's total forested area). \code{NULL} omits it.}
 }
 \value{
 A \code{ggplot} object (\code{NULL} for empty input).
