@@ -52,8 +52,23 @@ nrv_metrics_landscape <- function(summaryPolys, polyCol, vtm, funList = NULL) {
         rc <- terra::crop(r, subpoly)
         rcm <- terra::mask(rc, subpoly)
 
+        ## skip empty subregions (no forested pixels after crop/mask): the landscape-level lsm_l_*
+        ## metrics error on an all-NA raster. Return an empty table per metric so the subregion still
+        ## appears (with no rows) in output. Mirrors the patchStats() / patchStatsSeral() guard.
+        if (terra::global(rcm, "notNA")[[1L]] == 0) {
+          empty <- data.frame(
+            layer = integer(0),
+            level = character(0),
+            class = character(0),
+            id = integer(0),
+            metric = character(0),
+            value = numeric(0)
+          )
+          return(stats::setNames(replicate(length(funList), empty, simplify = FALSE), funList))
+        }
+
         out <- lapply(funList, function(fun) {
-          fn <- get(fun)
+          fn <- .get_fun(fun)
 
           fn(rcm)
         })

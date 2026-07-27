@@ -12,6 +12,120 @@ utils::globalVariables(c(
   if (length(hit) >= 1L) hit[[1L]] else 1L
 }
 
+## Resolve a `funList` entry to a function: a bare name ("lsm_c_np") is looked up as before, or an
+## explicit "pkg::fun" is resolved from that package's namespace, letting a caller disambiguate or reach
+## a function not otherwise visible (GH #1). getExportedValue() loads the namespace as needed.
+.get_fun <- function(fun) {
+  if (grepl("::", fun, fixed = TRUE)) {
+    parts <- strsplit(fun, "::", fixed = TRUE)[[1L]]
+    getExportedValue(parts[[1L]], parts[[2L]])
+  } else {
+    get(fun)
+  }
+}
+
+#' Relabel integer vegetation-type class codes with their species labels
+#'
+#' Replaces integer vegetation-type category codes in a `class` column with the
+#' matching species labels from a categorical vegetation-type map's RAT
+#' (`terra::levels(vtm)[[1]]`). Class-level \pkg{landscapemetrics} metrics
+#' (`lsm_c_*()`) report the raw integer category, whereas the nrvtools producers
+#' ([patchAges()] / [patchAreas()]) already return labelled classes -- this
+#' relabels the former and leaves the latter unchanged. Idempotent: any class
+#' value that is not an integer code (e.g. an already-mapped species name) or
+#' that has no RAT match is kept as-is. Handles a `class` column stored as
+#' numeric (raw metric output) or as character (e.g. after a mixed-type column is
+#' written to and read back from parquet).
+#'
+#' @param df A `data.frame`/`tibble` with a class column (`class_col`); returned
+#'   unchanged if `NULL`, empty, or lacking that column.
+#' @param vtm A categorical vegetation-type `SpatRaster`; its RAT supplies the
+#'   code -> label lookup. A raster with no usable RAT leaves `df` unchanged.
+#' @param class_col Name of the class column to relabel (default `"class"`).
+#'
+#' @return `df` with `class_col` relabelled where codes matched the RAT.
+#'
+#' @export
+#' @seealso [patchStats()], [patchAreas()]
+label_vegtype_classes <- function(df, vtm, class_col = "class") {
+  if (is.null(df) || !nrow(df) || !(class_col %in% names(df))) {
+    return(df)
+  }
+  rat <- terra::levels(vtm)[[1]]
+  if (is.null(rat) || NCOL(rat) < 2L) {
+    return(df)
+  }
+  idcol <- .rat_value_col(rat)
+  lblcol <- setdiff(seq_len(NCOL(rat)), idcol)[[1L]]
+  code <- suppressWarnings(as.integer(as.character(df[[class_col]])))
+  lab <- rat[match(code, rat[[idcol]]), ][[lblcol]]
+  df[[class_col]] <- ifelse(is.na(lab), as.character(df[[class_col]]), as.character(lab))
+  df
+}
+
+#' Forested area (ha) per subregion and leading species
+#'
+#' Tabulates the forested area, in hectares, of each leading-vegetation species
+#' within each subregion of a reporting layer, from a categorical
+#' vegetation-type map (the leading-species map). Mirrors the v2 LandWeb /
+#' NW_AB comparative-boxplot area calculation: extract the map over the
+#' subregion polygons, count cells per species, and multiply by the cell area.
+#' An `all_label` ("All species") row per subregion carries the subregion's
+#' total forested area.
+#'
+#' @param vtm A categorical vegetation-type `SpatRaster` (leading-species map);
+#'   assumed to have a projected CRS in metres (cell area = `prod(res(vtm))`).
+#' @param polys Subregion polygons (`SpatVector`, `sf`, or `Spatial`); reprojected
+#'   to `vtm` as needed.
+#' @param poly_col Name of the column in `polys` holding the subregion label.
+#' @param all_label Label for the per-subregion total row (default
+#'   `"All species"`); `NULL` omits the totals.
+#'
+#' @return A `data.frame` with columns `poly`, `vegCover`, `n_pixels`, `area_ha`.
+#'
+#' @export
+#' @seealso [plot_leading_boxplot()]
+subregion_forested_area <- function(vtm, polys, poly_col, all_label = "All species") {
+  if (!inherits(polys, "SpatVector")) {
+    polys <- terra::vect(polys)
+  }
+  polys <- terra::project(polys, vtm)
+  cell_ha <- prod(terra::res(vtm)) / 1e4 ## projected CRS in metres -> ha
+  ext <- terra::extract(vtm, polys) ## ID + the (factor) species-label column
+  vcol <- setdiff(names(ext), "ID")[[1L]]
+  poly_name <- as.character(polys[[poly_col]][[1L]])
+  df <- data.frame(
+    poly = poly_name[ext[["ID"]]],
+    vegCover = as.character(ext[[vcol]]),
+    stringsAsFactors = FALSE
+  )
+  df <- df[!is.na(df[["vegCover"]]) & !is.na(df[["poly"]]), , drop = FALSE]
+  empty <- data.frame(
+    poly = character(0),
+    vegCover = character(0),
+    n_pixels = integer(0),
+    area_ha = numeric(0)
+  )
+  if (!nrow(df)) {
+    return(empty)
+  }
+  per <- df |>
+    dplyr::count(.data[["poly"]], .data[["vegCover"]], name = "n_pixels") |>
+    dplyr::mutate(area_ha = .data[["n_pixels"]] * cell_ha)
+  if (!is.null(all_label)) {
+    totals <- per |>
+      dplyr::group_by(.data[["poly"]]) |>
+      dplyr::summarise(
+        n_pixels = sum(.data[["n_pixels"]]),
+        area_ha = sum(.data[["area_ha"]]),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(vegCover = all_label)
+    per <- dplyr::bind_rows(per, totals)
+  }
+  as.data.frame(per[, c("poly", "vegCover", "n_pixels", "area_ha")])
+}
+
 #' Calculate areas for each patch (per species)
 #'
 #' @template vtm
@@ -24,10 +138,18 @@ patchAreas <- function(vtm) {
   areas <- landscapemetrics::lsm_p_area(vtm)
   areas <- areas[areas$class != 0, ] ## class 0 has no forested vegetation (e.g., recently disturbed)
   spp <- terra::levels(vtm)[[1]]
+  ## a tiny / empty subregion (no forested pixels) yields a non-categorical crop (RAT NULL / < 2
+  ## cols): nothing to label, return the (already empty) areas rather than erroring.
+  if (is.null(spp) || NCOL(spp) < 2L || nrow(areas) == 0L) {
+    return(areas[0, , drop = FALSE])
+  }
   idcol <- .rat_value_col(spp)
-  sppNames <- spp[match(areas$class, spp[[idcol]]), ][["values"]]
+  ## label column = the positional non-value column (terra names it "values"/"category"/etc. -- do
+  ## not hard-code "values", or RATs that use another name return NA and leave raw integer classes).
+  lblcol <- setdiff(seq_len(NCOL(spp)), idcol)[[1L]]
+  sppNames <- spp[match(areas$class, spp[[idcol]]), ][[lblcol]]
 
-  areas <- dplyr::mutate(areas, class = sppNames)
+  areas <- dplyr::mutate(areas, class = as.character(sppNames))
 
   return(areas)
 }
@@ -42,9 +164,22 @@ patchAreas <- function(vtm) {
 #'
 #' @export
 patchAges <- function(vtm, sam) {
+  spp <- terra::levels(vtm)[[1]]
+  ## a tiny / empty subregion (no forested pixels) yields a non-categorical crop (RAT NULL / < 2
+  ## cols): there are no patches to age, so return an empty result rather than erroring on
+  ## `names(spp)[[1L]]` below.
+  if (is.null(spp) || NCOL(spp) < 2L || nrow(spp) == 0L) {
+    return(data.frame(
+      layer = integer(0),
+      level = character(0),
+      class = character(0),
+      id = integer(0),
+      metric = character(0),
+      value = numeric(0)
+    ))
+  }
   ptchs <- landscapemetrics::get_patches(vtm)[[1]] ## identify patches for each species (class)
   ptchs$class_0 <- NULL ## class 0 has no forested vegetation (e.g., recently disturbed)
-  spp <- terra::levels(vtm)[[1]]
   ## terra's category table (RAT): column 1 is the integer category id, column 2 its label.
   ## Use positional columns, not hard-coded names -- LandR writes them lowercase (`id`/`values`)
   ## whereas other producers use `ID`, which silently mismatched here and renamed every patch to
@@ -82,6 +217,12 @@ patchAges <- function(vtm, sam) {
 patchAreasSeral <- function(ssm) {
   areas <- landscapemetrics::lsm_p_area(ssm)
   seral <- terra::levels(ssm)[[1]]
+  ## a tiny / empty subregion (no forested/flammable pixels) yields a non-categorical crop (RAT NULL /
+  ## < 2 cols): nothing to label, return the (already empty) areas rather than erroring. Mirrors the
+  ## patchAreas() guard.
+  if (is.null(seral) || NCOL(seral) < 2L || nrow(areas) == 0L) {
+    return(areas[0, , drop = FALSE])
+  }
   idcol <- .rat_value_col(seral)
   seralNames <- seral[match(areas[["class"]], seral[[idcol]]), ][["values"]]
 
@@ -122,21 +263,41 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 
     tc <- terra::crop(t, subpoly)
     tcm <- terra::mask(tc, subpoly)
-    tcm <- terra::mask(tcm, fc, maskvalue = 0) ## also mask non-flammable pixels
+    tcm <- terra::mask(tcm, fc, maskvalues = 0) ## also mask non-flammable pixels
 
     vc <- terra::crop(v, subpoly)
     vcm <- terra::mask(vc, subpoly)
 
+    ## skip empty subregions (no forested pixels after crop/mask): every metric would either error
+    ## (landscapemetrics::get_patches / lsm_* on an all-NA raster -> "attempt to select less than one
+    ## element") or be trivially empty. Return an empty table per metric so the subregion still
+    ## appears (with no rows) in the assembled output.
+    if (terra::global(vcm, "notNA")[[1L]] == 0) {
+      empty <- data.frame(
+        layer = integer(0),
+        level = character(0),
+        class = character(0),
+        id = integer(0),
+        metric = character(0),
+        value = numeric(0)
+      )
+      out <- stats::setNames(replicate(length(funList), empty, simplify = FALSE), funList)
+      return(out)
+    }
+
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
 
-      fn <- get(fun)
+      fn <- .get_fun(fun)
 
       if (fun %in% c("patchAges")) {
         dt <- fn(vcm, tcm)
       } else {
         dt <- fn(vcm)
       }
+      ## relabel raw integer vegType class codes (class-level lsm_c_* output) with species names via
+      ## the VTM RAT; patchAges/patchAreas already return labelled classes and pass through unchanged.
+      dt <- label_vegtype_classes(dt, vcm)
       message("...done!")
 
       dt
@@ -177,11 +338,28 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 
     sc <- terra::crop(s, subpoly)
     scm <- terra::mask(sc, subpoly)
-    scm <- terra::mask(scm, fc, maskvalue = 0) ## also mask non-flammable pixels
+    scm <- terra::mask(scm, fc, maskvalues = 0) ## also mask non-flammable pixels
+
+    ## skip empty subregions (no flammable/forested pixels after crop/mask): every metric would either
+    ## error (landscapemetrics::get_patches / lsm_* on an all-NA raster -> "attempt to select less than
+    ## one element") or be trivially empty. Return an empty table per metric so the subregion still
+    ## appears (with no rows) in the assembled output. Mirrors the patchStats() guard.
+    if (terra::global(scm, "notNA")[[1L]] == 0) {
+      empty <- data.frame(
+        layer = integer(0),
+        level = character(0),
+        class = character(0),
+        id = integer(0),
+        metric = character(0),
+        value = numeric(0)
+      )
+      out <- stats::setNames(replicate(length(funList), empty, simplify = FALSE), funList)
+      return(out)
+    }
 
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
-      fn <- get(fun)
+      fn <- .get_fun(fun)
       dt <- fn(scm)
       message("...done!")
 

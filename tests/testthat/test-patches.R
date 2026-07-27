@@ -96,6 +96,81 @@ testthat::test_that("patchAreasSeral works correctly", {
   testthat::expect_equal(early_area, 8 * prod(terra::res(ssm)) / 1e4) ## areas in ha
 })
 
+testthat::test_that("patchAreasSeral returns empty (not error) for an all-NA / RAT-less subregion", {
+  ## an empty crop has no category table -> the pre-guard code errored in .rat_value_col()
+  ssm <- terra::rast(matrix(NA_real_, nrow = 5, ncol = 5), crs = "EPSG:3857")
+  areas <- patchAreasSeral(ssm)
+  testthat::expect_equal(nrow(areas), 0L)
+  testthat::expect_named(areas, c("layer", "level", "class", "id", "metric", "value"))
+})
+
+testthat::test_that("patchStatsSeral guards a subregion with no flammable pixels", {
+  dir <- withr::local_tempdir()
+  ssm <- .create_mock_vtm()
+  levels(ssm) <- data.frame(ID = 1:3, values = c("Early", "Mid", "Late"))
+  flm <- terra::rast(matrix(0, nrow = 5, ncol = 5), crs = "EPSG:3857") ## all non-flammable
+  terra::ext(flm) <- terra::ext(ssm)
+  ssm_f <- file.path(dir, "seralStageMap_year0.tif")
+  flm_f <- file.path(dir, "flam.tif")
+  terra::writeRaster(ssm, ssm_f)
+  terra::writeRaster(flm, flm_f)
+  poly <- terra::as.polygons(terra::ext(ssm), crs = terra::crs(ssm))
+  poly$Name <- "Z1"
+
+  ## every pixel masked non-flammable -> all-NA crop -> guard returns empty tables, no error
+  res <- patchStatsSeral(ssm_f, flm_f, "Z1", poly, "Name", c("patchAreasSeral"))
+  inner <- res[[1L]]
+  testthat::expect_named(inner, "patchAreasSeral")
+  testthat::expect_equal(nrow(inner[["patchAreasSeral"]]), 0L)
+})
+
+testthat::test_that("label_vegtype_classes() maps integer codes and leaves labels/non-matches alone", {
+  vtm <- .create_mock_vtm() ## RAT: 1=forest, 2=grass, 3=water
+
+  ## integer-coded classes (as from lsm_c_*), stored as character (post-parquet) or numeric
+  df_chr <- data.frame(class = c("1", "2", "3"), value = 1:3, stringsAsFactors = FALSE)
+  testthat::expect_equal(label_vegtype_classes(df_chr, vtm)$class, c("forest", "grass", "water"))
+  df_num <- data.frame(class = c(1, 2, 3), value = 1:3)
+  testthat::expect_equal(label_vegtype_classes(df_num, vtm)$class, c("forest", "grass", "water"))
+
+  ## already-labelled classes (patchAges/patchAreas) and codes absent from the RAT pass through
+  df_mixed <- data.frame(class = c("1", "grass", "9"), value = 1:3, stringsAsFactors = FALSE)
+  testthat::expect_equal(label_vegtype_classes(df_mixed, vtm)$class, c("forest", "grass", "9"))
+
+  ## idempotent, and a no-op for empty / class-less / RAT-less input
+  once <- label_vegtype_classes(df_chr, vtm)
+  testthat::expect_equal(label_vegtype_classes(once, vtm)$class, once$class)
+  testthat::expect_equal(label_vegtype_classes(df_chr[0, ], vtm)$class, character(0))
+  testthat::expect_named(label_vegtype_classes(data.frame(value = 1:2), vtm), "value")
+})
+
+testthat::test_that("subregion_forested_area() tabulates ha per subregion x species", {
+  vtm <- .create_mock_vtm() ## 5x5: forest=8, grass=8, water=9 cells (all classified)
+  cell_ha <- prod(terra::res(vtm)) / 1e4
+  poly <- terra::as.polygons(terra::ext(vtm), crs = terra::crs(vtm))
+  poly$Name <- "Z1"
+
+  a <- subregion_forested_area(vtm, poly, "Name")
+  get <- function(sp) a$area_ha[a$poly == "Z1" & a$vegCover == sp]
+
+  testthat::expect_equal(get("forest"), 8 * cell_ha)
+  testthat::expect_equal(get("grass"), 8 * cell_ha)
+  testthat::expect_equal(get("water"), 9 * cell_ha)
+  ## the "All species" row is the subregion total
+  testthat::expect_equal(get("All species"), 25 * cell_ha)
+  ## all_label = NULL drops the totals row
+  testthat::expect_false(
+    "All species" %in% subregion_forested_area(vtm, poly, "Name", all_label = NULL)$vegCover
+  )
+})
+
+testthat::test_that(".get_fun() resolves bare names and namespaced pkg::fun funList entries (#1)", {
+  ## bare name -> looked up as before
+  testthat::expect_identical(.get_fun("patchAreasSeral"), patchAreasSeral)
+  ## explicit pkg::fun -> resolved from that package's namespace
+  testthat::expect_identical(.get_fun("landscapemetrics::lsm_l_ta"), landscapemetrics::lsm_l_ta)
+})
+
 testthat::test_that(".rat_value_col() finds the value column across RAT naming conventions", {
   ## terra RATs name the cell-value column "ID" for some rasters and "value" for others (e.g. the
   ## seral-stage map); the label column is "values". Must pick the value column, not the label.

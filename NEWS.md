@@ -1,3 +1,50 @@
+# nrvtools 0.2.9
+
+- `funList` entries passed to `nrv_metrics_landscape()`, `patchStats()`, `patchStatsSeral()`, and `calculateLandWebMetrics()` may now be explicit `pkg::fun` strings (e.g. `"landscapemetrics::lsm_l_ta"`) in addition to bare function names, resolved from the named package's namespace so a caller can disambiguate or reach a function not otherwise on the search path (#1).
+
+# nrvtools 0.2.8
+
+- `patchStatsSeral()`, `patchAreasSeral()`, and `nrv_metrics_landscape()` now guard an empty / no-forest reporting subregion (an all-`NA` crop after crop/mask) instead of erroring in `landscapemetrics` (`get_patches()` / `lsm_*` -> "attempt to select less than one element"), returning an empty table per metric so the subregion still appears with no rows in the assembled output. This extends the 0.2.2/0.2.3 empty-subregion guards, previously only on the non-seral `patchStats()`/`patchAreas()`/`patchAges()` path, to the seral and landscape-metric paths. Also fixes a `terra::mask()` partial-argument match (`maskvalue` -> `maskvalues`) in `patchStats()`/`patchStatsSeral()`.
+
+# nrvtools 0.2.7
+
+- `subregion_forested_area()` (new, exported) tabulates the forested area (ha) of each leading-vegetation species within each subregion of a reporting layer from a categorical vegetation-type map, with an "All species" total per subregion (the v2 / NW_AB comparative-boxplot area calculation).
+- `plot_leading_boxplot()` gains a `caption` argument, rendered bottom-right below the figure (e.g. the subregion's total forested area).
+
+# nrvtools 0.2.6
+
+- `plot_nrv_envelope()` draws a single plain panel (no placeholder "all" facet strip) when none of the candidate faceting columns vary, e.g. a per-subregion landscape-metric envelope that has no class dimension.
+
+# nrvtools 0.2.5
+
+- `label_vegtype_classes()` (new, exported) relabels integer vegetation-type class codes in a `class` column with their species labels from a categorical VTM's RAT, leaving already-labelled classes and non-matches unchanged (idempotent). `patchStats()` now applies it so class-level `lsm_c_*` patch metrics report species names instead of raw integer codes, matching `patchAges()` / `patchAreas()`.
+
+# nrvtools 0.2.4
+
+- `plot_nrv_envelope()` gains a `title` argument and optional pagination (`page`, `ncol`, `nrow`): with `page = NULL` it draws every panel in one figure as before, while an integer `page` splits the panels across pages via `ggforce::facet_wrap_paginate()` (use `ggforce::n_pages()` on the `page = 1` result to get the page count). This lets a large panel set be written as several PNGs instead of one crammed figure.
+
+# nrvtools 0.2.3
+
+- `patchStats()` skips a reporting subregion with no forested pixels (an all-`NA` crop) instead of erroring, guarding the whole metric set at once (`landscapemetrics::get_patches()`/`lsm_*` fail on an all-`NA` raster). The per-metric RAT guards added in 0.2.2 did not catch this because the category table persists even when all cells are `NA`.
+
+# nrvtools 0.2.2
+
+- `patchAges()`, `patchAreas()`, and `.cat_labels()` (used by `leadingVegByAgeClass()` /
+  `largePatchCounts()`) now return an empty / all-`NA` result for a tiny or empty reporting subregion
+  (one with no forested pixels, whose cropped vegetation-type map has no category table) instead of
+  erroring with "attempt to select less than one element". This surfaced once reporting-polygon
+  subregions stopped being collapsed together. `patchAreas()` also now reads the RAT label from its
+  positional (non-value) column rather than a hard-coded "values" name.
+
+# nrvtools 0.2.1
+
+- `plot_leading_boxplot()` and `plot_largepatch_histogram()`: the v2-form LandWeb-summary plots for a single reporting unit. `plot_leading_boxplot()` draws horizontal green age-class box-and-whiskers of the across-replicate proportion of forest area, with the current condition as a red dot (replacing the earlier busy distribution histograms for the Leading analysis). `plot_largepatch_histogram()` draws one file per species with four age-class panels (young to old), each the across-replicate "Proportion in NRV" of the patch count, with a red current-condition vertical line.
+
+# nrvtools 0.2.0
+
+- `calculateLandWebMetrics()`, `leadingVegByAgeClass()`, `largePatchCounts()`, `default_landweb_metrics()`: port the v2 `LandWeb_summary` "Leading vegetation type by age class" and "LargePatches" analyses onto the Arrow-native raw-producer contract. `leadingVegByAgeClass()` computes the proportion of each vegetation class in each age class (plus an "All species" roll-up); `largePatchCounts()` bins age, delineates contiguous (age class x vegetation class) patches with `landscapemetrics::get_patches()` (default 4-connectivity, matching the v2 GDAL polygonize) and counts patches at/above each size threshold; `calculateLandWebMetrics()` is the per-replicate wrapper (crops to each reporting polygon, no flammable masking). These metrics pool the NRV distribution across replicates and summary years, so summarize with `time` excluded from the id columns.
+- `plot_nrv_distribution()`: plot the across-replicate distribution of a metric (pooled over the summary period) as a histogram with an optional current-condition reference line, reproducing the v2 LandWeb_summary histograms. Unlike `plot_nrv_envelope()`, this reads the raw per-replicate parquet (not the collapsed envelope) and is not a time series.
+
 # nrvtools 0.1.3
 
 - `patchAges()`: fix the per-patch median stand-age summary. `sam[ids]` returns a one-column data.frame, so the summary column was not `lyr.1` (`dplyr::summarise(median(lyr.1))` errored with `object 'lyr.1' not found`). Extract the values vector (`sam[ids][[1L]]`) and summarise `median(sam)`. Together with the 0.1.2 RAT fix, `patchAges()` now runs end-to-end.
