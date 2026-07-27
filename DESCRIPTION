@@ -43,6 +43,7 @@ Suggests:
     testthat (>= 3.0.0),
     withr
 Remotes:
+    PredictiveEcology/reproducible@development,
     PredictiveEcology/SpaDES.tools@development
 Config/testthat/edition: 3
 Encoding: UTF-8
