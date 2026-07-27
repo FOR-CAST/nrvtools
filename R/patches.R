@@ -205,6 +205,12 @@ patchAges <- function(vtm, sam) {
 patchAreasSeral <- function(ssm) {
   areas <- landscapemetrics::lsm_p_area(ssm)
   seral <- terra::levels(ssm)[[1]]
+  ## a tiny / empty subregion (no forested/flammable pixels) yields a non-categorical crop (RAT NULL /
+  ## < 2 cols): nothing to label, return the (already empty) areas rather than erroring. Mirrors the
+  ## patchAreas() guard.
+  if (is.null(seral) || NCOL(seral) < 2L || nrow(areas) == 0L) {
+    return(areas[0, , drop = FALSE])
+  }
   idcol <- .rat_value_col(seral)
   seralNames <- seral[match(areas[["class"]], seral[[idcol]]), ][["values"]]
 
@@ -245,7 +251,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 
     tc <- terra::crop(t, subpoly)
     tcm <- terra::mask(tc, subpoly)
-    tcm <- terra::mask(tcm, fc, maskvalue = 0) ## also mask non-flammable pixels
+    tcm <- terra::mask(tcm, fc, maskvalues = 0) ## also mask non-flammable pixels
 
     vc <- terra::crop(v, subpoly)
     vcm <- terra::mask(vc, subpoly)
@@ -320,7 +326,24 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 
     sc <- terra::crop(s, subpoly)
     scm <- terra::mask(sc, subpoly)
-    scm <- terra::mask(scm, fc, maskvalue = 0) ## also mask non-flammable pixels
+    scm <- terra::mask(scm, fc, maskvalues = 0) ## also mask non-flammable pixels
+
+    ## skip empty subregions (no flammable/forested pixels after crop/mask): every metric would either
+    ## error (landscapemetrics::get_patches / lsm_* on an all-NA raster -> "attempt to select less than
+    ## one element") or be trivially empty. Return an empty table per metric so the subregion still
+    ## appears (with no rows) in the assembled output. Mirrors the patchStats() guard.
+    if (terra::global(scm, "notNA")[[1L]] == 0) {
+      empty <- data.frame(
+        layer = integer(0),
+        level = character(0),
+        class = character(0),
+        id = integer(0),
+        metric = character(0),
+        value = numeric(0)
+      )
+      out <- stats::setNames(replicate(length(funList), empty, simplify = FALSE), funList)
+      return(out)
+    }
 
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))

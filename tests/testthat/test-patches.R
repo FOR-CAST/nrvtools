@@ -96,6 +96,34 @@ testthat::test_that("patchAreasSeral works correctly", {
   testthat::expect_equal(early_area, 8 * prod(terra::res(ssm)) / 1e4) ## areas in ha
 })
 
+testthat::test_that("patchAreasSeral returns empty (not error) for an all-NA / RAT-less subregion", {
+  ## an empty crop has no category table -> the pre-guard code errored in .rat_value_col()
+  ssm <- terra::rast(matrix(NA_real_, nrow = 5, ncol = 5), crs = "EPSG:3857")
+  areas <- patchAreasSeral(ssm)
+  testthat::expect_equal(nrow(areas), 0L)
+  testthat::expect_named(areas, c("layer", "level", "class", "id", "metric", "value"))
+})
+
+testthat::test_that("patchStatsSeral guards a subregion with no flammable pixels", {
+  dir <- withr::local_tempdir()
+  ssm <- .create_mock_vtm()
+  levels(ssm) <- data.frame(ID = 1:3, values = c("Early", "Mid", "Late"))
+  flm <- terra::rast(matrix(0, nrow = 5, ncol = 5), crs = "EPSG:3857") ## all non-flammable
+  terra::ext(flm) <- terra::ext(ssm)
+  ssm_f <- file.path(dir, "seralStageMap_year0.tif")
+  flm_f <- file.path(dir, "flam.tif")
+  terra::writeRaster(ssm, ssm_f)
+  terra::writeRaster(flm, flm_f)
+  poly <- terra::as.polygons(terra::ext(ssm), crs = terra::crs(ssm))
+  poly$Name <- "Z1"
+
+  ## every pixel masked non-flammable -> all-NA crop -> guard returns empty tables, no error
+  res <- patchStatsSeral(ssm_f, flm_f, "Z1", poly, "Name", c("patchAreasSeral"))
+  inner <- res[[1L]]
+  testthat::expect_named(inner, "patchAreasSeral")
+  testthat::expect_equal(nrow(inner[["patchAreasSeral"]]), 0L)
+})
+
 testthat::test_that("label_vegtype_classes() maps integer codes and leaves labels/non-matches alone", {
   vtm <- .create_mock_vtm() ## RAT: 1=forest, 2=grass, 3=water
 

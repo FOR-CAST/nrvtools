@@ -1,3 +1,7 @@
+# nrvtools 0.2.8
+
+- `patchStatsSeral()`, `patchAreasSeral()`, and `nrv_metrics_landscape()` now guard an empty / no-forest reporting subregion (an all-`NA` crop after crop/mask) instead of erroring in `landscapemetrics` (`get_patches()` / `lsm_*` -> "attempt to select less than one element"), returning an empty table per metric so the subregion still appears with no rows in the assembled output. This extends the 0.2.2/0.2.3 empty-subregion guards, previously only on the non-seral `patchStats()`/`patchAreas()`/`patchAges()` path, to the seral and landscape-metric paths. Also fixes a `terra::mask()` partial-argument match (`maskvalue` -> `maskvalues`) in `patchStats()`/`patchStatsSeral()`.
+
 # nrvtools 0.2.7
 
 - `subregion_forested_area()` (new, exported) tabulates the forested area (ha) of each leading-vegetation species within each subregion of a reporting layer from a categorical vegetation-type map, with an "All species" total per subregion (the v2 / NW_AB comparative-boxplot area calculation).
