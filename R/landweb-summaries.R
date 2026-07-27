@@ -334,7 +334,7 @@ calculateLandWebMetrics <- function(summaryPolys, polyCol, vtm, age, funList = N
         acm <- terra::mask(terra::crop(ra, subpoly), subpoly)
 
         out <- lapply(funList, function(fun) {
-          fn <- get(fun)
+          fn <- .get_fun(fun)
           argsFn <- dots[intersect(names(dots), names(formals(fn)))]
           do.call(fn, c(list(vtm = vcm, age = acm), argsFn))
         })

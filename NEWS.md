@@ -1,3 +1,7 @@
+# nrvtools 0.2.9
+
+- `funList` entries passed to `nrv_metrics_landscape()`, `patchStats()`, `patchStatsSeral()`, and `calculateLandWebMetrics()` may now be explicit `pkg::fun` strings (e.g. `"landscapemetrics::lsm_l_ta"`) in addition to bare function names, resolved from the named package's namespace so a caller can disambiguate or reach a function not otherwise on the search path (#1).
+
 # nrvtools 0.2.8
 
 - `patchStatsSeral()`, `patchAreasSeral()`, and `nrv_metrics_landscape()` now guard an empty / no-forest reporting subregion (an all-`NA` crop after crop/mask) instead of erroring in `landscapemetrics` (`get_patches()` / `lsm_*` -> "attempt to select less than one element"), returning an empty table per metric so the subregion still appears with no rows in the assembled output. This extends the 0.2.2/0.2.3 empty-subregion guards, previously only on the non-seral `patchStats()`/`patchAreas()`/`patchAges()` path, to the seral and landscape-metric paths. Also fixes a `terra::mask()` partial-argument match (`maskvalue` -> `maskvalues`) in `patchStats()`/`patchStatsSeral()`.

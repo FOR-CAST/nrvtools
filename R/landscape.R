@@ -68,7 +68,7 @@ nrv_metrics_landscape <- function(summaryPolys, polyCol, vtm, funList = NULL) {
         }
 
         out <- lapply(funList, function(fun) {
-          fn <- get(fun)
+          fn <- .get_fun(fun)
 
           fn(rcm)
         })

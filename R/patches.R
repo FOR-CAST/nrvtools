@@ -12,6 +12,18 @@ utils::globalVariables(c(
   if (length(hit) >= 1L) hit[[1L]] else 1L
 }
 
+## Resolve a `funList` entry to a function: a bare name ("lsm_c_np") is looked up as before, or an
+## explicit "pkg::fun" is resolved from that package's namespace, letting a caller disambiguate or reach
+## a function not otherwise visible (GH #1). getExportedValue() loads the namespace as needed.
+.get_fun <- function(fun) {
+  if (grepl("::", fun, fixed = TRUE)) {
+    parts <- strsplit(fun, "::", fixed = TRUE)[[1L]]
+    getExportedValue(parts[[1L]], parts[[2L]])
+  } else {
+    get(fun)
+  }
+}
+
 #' Relabel integer vegetation-type class codes with their species labels
 #'
 #' Replaces integer vegetation-type category codes in a `class` column with the
@@ -276,7 +288,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
 
-      fn <- get(fun)
+      fn <- .get_fun(fun)
 
       if (fun %in% c("patchAges")) {
         dt <- fn(vcm, tcm)
@@ -347,7 +359,7 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
 
     out <- lapply(funList, function(fun) {
       message(paste("    ... running", fun, "for", polyName))
-      fn <- get(fun)
+      fn <- .get_fun(fun)
       dt <- fn(scm)
       message("...done!")
 

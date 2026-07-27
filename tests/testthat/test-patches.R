@@ -164,6 +164,13 @@ testthat::test_that("subregion_forested_area() tabulates ha per subregion x spec
   )
 })
 
+testthat::test_that(".get_fun() resolves bare names and namespaced pkg::fun funList entries (#1)", {
+  ## bare name -> looked up as before
+  testthat::expect_identical(.get_fun("patchAreasSeral"), patchAreasSeral)
+  ## explicit pkg::fun -> resolved from that package's namespace
+  testthat::expect_identical(.get_fun("landscapemetrics::lsm_l_ta"), landscapemetrics::lsm_l_ta)
+})
+
 testthat::test_that(".rat_value_col() finds the value column across RAT naming conventions", {
   ## terra RATs name the cell-value column "ID" for some rasters and "value" for others (e.g. the
   ## seral-stage map); the label column is "values". Must pick the value column, not the label.
