@@ -76,6 +76,29 @@ testthat::test_that("plot_nrv_envelope facets varying columns and handles empty 
   testthat::expect_null(plot_nrv_envelope(NULL))
 })
 
+testthat::test_that("plot_nrv_envelope panels follow the facet columns' factor ordering", {
+  ## seral stages sort alphabetically to early, mature, mid, old -- a factor `class` column must
+  ## instead panel in its own (ecological) order.
+  stages <- c("early", "mid", "mature", "old")
+  env <- data.frame(
+    time = rep(c(0, 50), each = 4),
+    class = factor(rep(stages, 2), levels = stages),
+    mean = 1:8,
+    min = 1:8,
+    q25 = 1:8,
+    median = 1:8,
+    q75 = 1:8,
+    max = 1:8
+  )
+
+  p <- plot_nrv_envelope(env)
+  testthat::expect_equal(levels(p$data$.panel), stages)
+
+  ## a plain character column still sorts naturally
+  env$class <- as.character(env$class)
+  testthat::expect_equal(levels(plot_nrv_envelope(env)$data$.panel), sort(stages))
+})
+
 testthat::test_that("plot_nrv_envelope draws a box-and-whisker from the five-number summary", {
   env <- data.frame(
     time = rep(c(0, 50), 2),

@@ -90,27 +90,34 @@ nrv_metrics_landscape <- function(summaryPolys, polyCol, vtm, funList = NULL) {
 
   frag_stat_df <- lapply(fragStats, function(x) {
     x <- unlist(x, recursive = FALSE, use.names = TRUE)
+    lbl <- .parse_metric_labels(names(x))
 
-    labels <- purrr::transpose(strsplit(names(x), "[.]"))
-    labels1 <- unlist(labels[[1]])
-    labels2 <- gsub("vegTypeMap", "", unlist(labels[[2]]))
-    labels2a <- purrr::transpose(strsplit(labels2, "_"))
-    labels2a2 <- unlist(labels2a[[2]]) ## year
-    labels2a3 <- if (length(labels2a) == 3) {
-      unlist(labels2a[[3]]) ## subpoly
-    } else if (length(labels2a) == 4) {
-      paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
-    } else {
-      stop("polyName contains too many underscores")
+    ## Stamp rep/time/poly PER ELEMENT rather than onto the row-bound table: an empty subregion (no
+    ## forested pixels after crop/mask) contributes zero rows, so binding first and then mutating with
+    ## the full-length label vectors would silently shift every subsequent row's rep/time/poly.
+    out <- do.call(
+      rbind,
+      lapply(seq_along(x), function(i) {
+        if (nrow(x[[i]]) == 0L) {
+          return(NULL)
+        }
+        dplyr::mutate(x[[i]], rep = lbl$rep[i], time = lbl$time[i], poly = lbl$poly[i])
+      })
+    )
+    if (is.null(out)) {
+      out <- data.frame(
+        layer = integer(0),
+        level = character(0),
+        class = character(0),
+        id = integer(0),
+        metric = character(0),
+        value = numeric(0),
+        rep = integer(0),
+        time = integer(0),
+        poly = character(0)
+      )
     }
-
-    vtmReps <- as.integer(gsub("rep", "", labels1))
-    vtmTimes <- as.integer(gsub("year", "", labels2a2))
-    vtmStudyAreas <- labels2a3
-
-    ## landscape-level metrics return one row per (rep x time x poly), so the parsed
-    ## rep/time/poly vectors align row-for-row with the bound raw values.
-    do.call(rbind, x) |> dplyr::mutate(rep = vtmReps, time = vtmTimes, poly = vtmStudyAreas)
+    out
   })
   names(frag_stat_df) <- funList
 

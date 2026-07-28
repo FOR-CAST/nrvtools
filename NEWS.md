@@ -1,3 +1,12 @@
+# nrvtools 0.2.10
+
+- `label_rat_classes()` (new, exported) generalises `label_vegtype_classes()` to any categorical map's RAT; `label_vegtype_classes()` is retained as the vegetation-type spelling of the same operation.
+- `nrv_metrics_landscape()` no longer mis-assigns `rep`/`time`/`poly` when a reporting subregion is empty. The 0.2.8 empty-subregion guard makes such a subregion contribute zero rows, but the identifiers were stamped onto the already row-bound table from full-length vectors, shifting every subsequent row's identifiers by one subregion; they are now stamped per subregion before binding (as on the patch-metric path).
+- `patchStatsSeral()` now relabels class-level `lsm_c_*` integer class codes with their seral stage names via the seral-stage map's RAT, matching the vegetation-type relabelling `patchStats()` has done since 0.2.5. Class-level seral metrics previously reported raw raster codes (`1`, `5`, `9`, `13`) rather than `early`/`mid`/`mature`/`old`.
+- `plot_nrv_envelope()` and `plot_nrv_distribution()` order panels by the faceting columns' own ordering rather than alphabetically by the pasted panel label, so a factor facet column (e.g. `factor(class, levels = seral_stages())`) panels in its declared order. Both also gain `rptPoly` as the first default faceting column.
+- `summarize_nrv()` auto-detects `rptPoly` as an identifier column, naming the reporting polygon LAYER a metric was summarised over (where `poly` is the subregion within that layer), so metrics computed over several reporting layers aggregate without collapsing across them.
+- Reporting polygon names containing more than one underscore no longer abort `calculatePatchMetrics()`, `calculatePatchMetricsSeral()`, and `nrv_metrics_landscape()` with "polyName contains too many underscores"; names are now parsed as everything following the `_year<YYYY>_` marker, so names containing `_` or `.` (BEC subzones, NDT-BEC codes, landscape unit names) all parse correctly.
+
 # nrvtools 0.2.9
 
 - `funList` entries passed to `nrv_metrics_landscape()`, `patchStats()`, `patchStatsSeral()`, and `calculateLandWebMetrics()` may now be explicit `pkg::fun` strings (e.g. `"landscapemetrics::lsm_l_ta"`) in addition to bare function names, resolved from the named package's namespace so a caller can disambiguate or reach a function not otherwise on the search path (#1).

@@ -24,34 +24,40 @@ utils::globalVariables(c(
   }
 }
 
-#' Relabel integer vegetation-type class codes with their species labels
+#' Relabel integer class codes with their raster attribute-table labels
 #'
-#' Replaces integer vegetation-type category codes in a `class` column with the
-#' matching species labels from a categorical vegetation-type map's RAT
-#' (`terra::levels(vtm)[[1]]`). Class-level \pkg{landscapemetrics} metrics
-#' (`lsm_c_*()`) report the raw integer category, whereas the nrvtools producers
-#' ([patchAges()] / [patchAreas()]) already return labelled classes -- this
-#' relabels the former and leaves the latter unchanged. Idempotent: any class
-#' value that is not an integer code (e.g. an already-mapped species name) or
-#' that has no RAT match is kept as-is. Handles a `class` column stored as
-#' numeric (raw metric output) or as character (e.g. after a mixed-type column is
-#' written to and read back from parquet).
+#' Replaces integer category codes in a `class` column with the matching labels
+#' from a categorical raster's RAT (`terra::levels(ras)[[1]]`). Class-level
+#' \pkg{landscapemetrics} metrics (`lsm_c_*()`) report the raw integer category,
+#' whereas the nrvtools producers ([patchAges()] / [patchAreas()] /
+#' [patchAreasSeral()]) already return labelled classes -- this relabels the
+#' former and leaves the latter unchanged. Idempotent: any class value that is
+#' not an integer code (e.g. an already-mapped label) or that has no RAT match is
+#' kept as-is. Handles a `class` column stored as numeric (raw metric output) or
+#' as character (e.g. after a mixed-type column is written to and read back from
+#' parquet).
+#'
+#' `label_vegtype_classes()` is the vegetation-type-map spelling of the same
+#' operation (a leading-species map's RAT maps code -> species name);
+#' `label_rat_classes()` applies to any categorical map, e.g. the seral-stage map
+#' from [seralStageMapGeneratorBC()], whose RAT maps code -> seral stage.
 #'
 #' @param df A `data.frame`/`tibble` with a class column (`class_col`); returned
 #'   unchanged if `NULL`, empty, or lacking that column.
-#' @param vtm A categorical vegetation-type `SpatRaster`; its RAT supplies the
-#'   code -> label lookup. A raster with no usable RAT leaves `df` unchanged.
+#' @param ras A categorical `SpatRaster`; its RAT supplies the code -> label
+#'   lookup. A raster with no usable RAT leaves `df` unchanged.
 #' @param class_col Name of the class column to relabel (default `"class"`).
 #'
 #' @return `df` with `class_col` relabelled where codes matched the RAT.
 #'
 #' @export
-#' @seealso [patchStats()], [patchAreas()]
-label_vegtype_classes <- function(df, vtm, class_col = "class") {
+#' @rdname label_rat_classes
+#' @seealso [patchStats()], [patchStatsSeral()], [patchAreas()]
+label_rat_classes <- function(df, ras, class_col = "class") {
   if (is.null(df) || !nrow(df) || !(class_col %in% names(df))) {
     return(df)
   }
-  rat <- terra::levels(vtm)[[1]]
+  rat <- terra::levels(ras)[[1]]
   if (is.null(rat) || NCOL(rat) < 2L) {
     return(df)
   }
@@ -61,6 +67,37 @@ label_vegtype_classes <- function(df, vtm, class_col = "class") {
   lab <- rat[match(code, rat[[idcol]]), ][[lblcol]]
   df[[class_col]] <- ifelse(is.na(lab), as.character(df[[class_col]]), as.character(lab))
   df
+}
+
+#' @param vtm A categorical vegetation-type `SpatRaster` (leading-species map).
+#'
+#' @export
+#' @rdname label_rat_classes
+label_vegtype_classes <- function(df, vtm, class_col = "class") {
+  label_rat_classes(df, vtm, class_col = class_col)
+}
+
+## Parse the `<rep>.<prefix>_year<YYYY>_<polyName>` labels that patchStats() / patchStatsSeral() /
+## nrv_metrics_landscape() attach to each per-(map x reporting polygon) result. The polygon name is
+## everything AFTER the `_year<YYYY>_` marker, so a name containing "_" or "." parses correctly -- BEC
+## subzones, NDT-BEC codes ("NDT3_SBS") and landscape-unit names all appear as reporting polygons, and
+## the previous strsplit-on-"_" scheme coped with at most one embedded underscore before erroring
+## ("polyName contains too many underscores").
+#' @return list(rep, time, poly), each the same length as `labels`.
+#' @noRd
+.parse_metric_labels <- function(labels) {
+  m <- regmatches(labels, regexec("^(.*?)\\.(.*)_year([0-9]+)_(.*)$", labels))
+  bad <- lengths(m) != 5L
+  if (any(bad)) {
+    stop(
+      "cannot parse metric label(s): ",
+      paste(utils::head(labels[bad], 3L), collapse = ", "),
+      " (expected '<rep>.<prefix>_year<YYYY>_<polyName>')",
+      call. = FALSE
+    )
+  }
+  part <- function(i) vapply(m, `[[`, character(1L), i)
+  list(rep = as.integer(sub("^rep", "", part(2L))), time = as.integer(part(4L)), poly = part(5L))
 }
 
 #' Forested area (ha) per subregion and leading species
@@ -361,6 +398,10 @@ patchStatsSeral <- function(ssm, flm, polyNames, summaryPolys, polyCol, funList)
       message(paste("    ... running", fun, "for", polyName))
       fn <- .get_fun(fun)
       dt <- fn(scm)
+      ## relabel raw integer seral-stage class codes (class-level lsm_c_* output) with their stage
+      ## names via the seral map's RAT; patchAreasSeral() already returns labelled classes and passes
+      ## through unchanged. Mirrors the vegType relabelling in patchStats().
+      dt <- label_rat_classes(dt, scm)
       message("...done!")
 
       dt
@@ -427,22 +468,7 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
 
   ptch_stat_df <- lapply(ptch_stats, function(x) {
     x <- unlist(x, recursive = FALSE, use.names = TRUE)
-    labels <- purrr::transpose(strsplit(names(x), "[.]"))
-    labels1 <- unlist(labels[[1]])
-    labels2 <- gsub("vegTypeMap", "", unlist(labels[[2]]))
-    labels2a <- purrr::transpose(strsplit(labels2, "_"))
-    labels2a2 <- unlist(labels2a[[2]]) ## year
-    labels2a3 <- if (length(labels2a) == 3) {
-      unlist(labels2a[[3]]) ## subpoly
-    } else if (length(labels2a) == 4) {
-      paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
-    } else {
-      stop("polyName contains too many underscores")
-    }
-
-    vtmReps <- as.integer(gsub("rep", "", labels1))
-    vtmTimes <- as.integer(gsub("year", "", labels2a2))
-    vtmStudyAreas <- labels2a3
+    lbl <- .parse_metric_labels(names(x))
 
     do.call(
       rbind,
@@ -457,7 +483,7 @@ calculatePatchMetrics <- function(summaryPolys, polyCol, flm, vtm, sam, funList 
             value = numeric(0)
           )
         }
-        dplyr::mutate(x[[i]], rep = vtmReps[i], time = vtmTimes[i], poly = vtmStudyAreas[i])
+        dplyr::mutate(x[[i]], rep = lbl$rep[i], time = lbl$time[i], poly = lbl$poly[i])
       })
     )
   })
@@ -517,22 +543,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
 
   ptch_stat_df <- lapply(ptch_stats, function(x) {
     x <- unlist(x, recursive = FALSE, use.names = TRUE)
-    labels <- purrr::transpose(strsplit(names(x), "[.]"))
-    labels1 <- unlist(labels[[1]])
-    labels2 <- gsub("seralStageMap", "", unlist(labels[[2]]))
-    labels2a <- purrr::transpose(strsplit(labels2, "_"))
-    labels2a2 <- unlist(labels2a[[2]]) ## year
-    labels2a3 <- if (length(labels2a) == 3) {
-      unlist(labels2a[[3]]) ## subpoly
-    } else if (length(labels2a) == 4) {
-      paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
-    } else {
-      stop("polyName contains too many underscores") ## TODO: improve label extraction to be less fragile
-    }
-
-    ssmReps <- as.integer(gsub("rep", "", labels1))
-    ssmTimes <- as.integer(gsub("year", "", labels2a2))
-    ssmStudyAreas <- labels2a3
+    lbl <- .parse_metric_labels(names(x))
 
     do.call(
       rbind,
@@ -547,7 +558,7 @@ calculatePatchMetricsSeral <- function(summaryPolys, polyCol, flm, ssm, funList 
             value = numeric(0)
           )
         }
-        dplyr::mutate(x[[i]], rep = ssmReps[i], time = ssmTimes[i], poly = ssmStudyAreas[i])
+        dplyr::mutate(x[[i]], rep = lbl$rep[i], time = lbl$time[i], poly = lbl$poly[i])
       })
     )
   })

@@ -8,7 +8,7 @@ plot_nrv_distribution(
   x,
   cc = NULL,
   value_col = "value",
-  facet = c("poly", "class", "metric", "metric.1"),
+  facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   bins = 30,
   xlab = value_col,
   ylab = "Proportion in NRV"
@@ -24,7 +24,7 @@ value is drawn as a red vertical reference line. \code{NULL} (default) omits it.
 \item{value_col}{Name of the value column to bin (default \code{"value"}).}
 
 \item{facet}{Candidate faceting columns; those present and varying become the
-panel label (default \code{c("poly", "class", "metric", "metric.1")}).}
+panel label (default \code{c("rptPoly", "poly", "class", "metric", "metric.1")}).}
 
 \item{bins}{Number of histogram bins (default \code{30}).}
 
