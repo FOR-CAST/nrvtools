@@ -1,3 +1,7 @@
+# nrvtools 0.2.11
+
+* **fix:** `calculateLandWebMetrics()` mis-labelled its results when a reporting layer mixed polygon names with different numbers of `_`-separated tokens. It split names on `"_"` and `purrr::transpose()`d them, which requires every element to be the same length; a layer holding both `ANC` and `DawsonCreek_TSA` therefore transposed to the wrong shape and recombined into the **cartesian product** of the tokens -- for LandWeb's WesternAlbertaUpland tenure layer that produced 45 fabricated names (`ANC_Edson`, `Canfor_GrandePr`, `Sundre_Hinton`, ...) in place of the 11 real ones, with `ANC`, `BlueRidge`, `Canfor`, `CanforWhitecourt`, `MillarWestern` and `Sundre` dropped entirely. It now uses the shared `_year<YYYY>_` marker parser (`.parse_metric_labels()`) introduced in 0.2.10 for `patchStats()` / `patchStatsSeral()` / `nrv_metrics_landscape()`, which this function was missed from. The labels were wrong but non-blank and the run completed normally, so `lw` aggregates produced by earlier versions should be regenerated;
+
 # nrvtools 0.2.10
 
 - `label_rat_classes()` (new, exported) generalises `label_vegtype_classes()` to any categorical map's RAT; `label_vegtype_classes()` is retained as the vegetation-type spelling of the same operation.
