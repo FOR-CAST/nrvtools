@@ -1,3 +1,21 @@
+# nrvtools 0.3.0
+
+## Seral patch metrics now follow the CEF forest-biodiversity protocol
+
+Seral-stage patches were previously whatever `landscapemetrics::get_patches()` returned: an eight-neighbour connected component of same-class cells, with no minimum size, no edge-influence erosion and no size classes. They now follow the landscape-patch definition of the Interim Assessment Protocol for Forest Biodiversity in British Columbia (Cumulative Effects Framework), section 3.2.2.
+
+- `cef_patch_params()` (new, exported) holds the protocol's patch parameters -- edge-influence buffer distances, minimum patch area, patch separation distance, and patch size classes -- as one list, so that raster and vector implementations of the protocol read the same numbers from a single place.
+- `conditionSeralPatchMap()` (new, exported) applies the map-level steps of the definition (bridging same-class stands closer together than the separation distance, absorbing sub-threshold residual patches) so that downstream patch metrics are computed on a map whose connected components *are* protocol patches. Both steps are resolution-dependent and either may be inexpressible at coarse cell sizes; the realised thresholds are recorded on the result as the `"cef_realised"` attribute and reported via `message()`, rather than being silently applied at the wrong scale.
+- `interiorForestSeral()` (new, exported) computes interior forest area in vector space, on dissolved class geometries only. This is deliberate: edge influence reaches 25-200 m into a patch, which is below the cell width for all but the widest band at a 120 m cell size, so a grid-based erosion returns interior forest indistinguishable from total mature+old area. Results are returned as areas and proportions per subregion, never rasterized back.
+- `patchSizeClassesSeral()` (new, exported) reports patch counts and total area per seral class per protocol size class (0-40 / 41-80 / 81-250 / >250 ha). A landscape can hold a constant total area of old forest while that area migrates from a few large patches into many small ones; the class-total metrics alone do not show this.
+- `patchAreaStatsSeral()` (new, exported) adds minimum, median and maximum patch area per class, complementing the existing `lsm_c_area_mn` / `_sd` / `_cv` moments.
+- `default_patch_metrics_seral()` gains `patchAreaStatsSeral`, `patchSizeClassesSeral`, and the Euclidean nearest-neighbour (interpatch distance) metrics `lsm_p_enn`, `lsm_c_enn_mn`, `lsm_c_enn_cv`, `lsm_c_enn_sd`.
+
+### Two behaviours worth knowing about
+
+- `lsm_*_enn_*` report the distance between the nearest *cell centres* of two patches, which is **one cell width larger than the gap between them**. Subtract the cell size before comparing an interpatch distance against one measured edge-to-edge on polygons.
+- The mature+old interior-forest target erases only the early and mid edge-influence bands, not the 25 m mature band. The 25 m band is the edge influence of *mature* stands, which are themselves part of a mature+old patch; erasing it collapses mature+old interior forest onto old-only interior forest, making the two targets numerically identical. `cef_patch_params()$interior_bands` encodes this, and it is covered by a regression test.
+
 # nrvtools 0.2.11
 
 * **fix:** `calculateLandWebMetrics()` mis-labelled its results when a reporting layer mixed polygon names with different numbers of `_`-separated tokens. It split names on `"_"` and `purrr::transpose()`d them, which requires every element to be the same length; a layer holding both `ANC` and `DawsonCreek_TSA` therefore transposed to the wrong shape and recombined into the **cartesian product** of the tokens -- for LandWeb's WesternAlbertaUpland tenure layer that produced 45 fabricated names (`ANC_Edson`, `Canfor_GrandePr`, `Sundre_Hinton`, ...) in place of the 11 real ones, with `ANC`, `BlueRidge`, `Canfor`, `CanforWhitecourt`, `MillarWestern` and `Sundre` dropped entirely. It now uses the shared `_year<YYYY>_` marker parser (`.parse_metric_labels()`) introduced in 0.2.10 for `patchStats()` / `patchStatsSeral()` / `nrv_metrics_landscape()`, which this function was missed from. The labels were wrong but non-blank and the run completed normally, so `lw` aggregates produced by earlier versions should be regenerated;

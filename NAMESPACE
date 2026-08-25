@@ -3,10 +3,13 @@
 export(calculateLandWebMetrics)
 export(calculatePatchMetrics)
 export(calculatePatchMetricsSeral)
+export(cef_patch_params)
+export(conditionSeralPatchMap)
 export(default_landscape_metrics)
 export(default_landweb_metrics)
 export(default_patch_metrics)
 export(default_patch_metrics_seral)
+export(interiorForestSeral)
 export(label_rat_classes)
 export(label_vegtype_classes)
 export(largePatchCounts)
@@ -14,8 +17,10 @@ export(leadingVegByAgeClass)
 export(nrv_metrics_landscape)
 export(open_nrv_dataset)
 export(patchAges)
+export(patchAreaStatsSeral)
 export(patchAreas)
 export(patchAreasSeral)
+export(patchSizeClassesSeral)
 export(patchStats)
 export(patchStatsSeral)
 export(plot_by_class)
@@ -34,75 +39,91 @@ export(writeSeralStageMapBC)
 export(write_nrv_parquet)
 import(methods)
 importFrom(assertthat,assert_that)
-importFrom(data.table,":=")
-importFrom(data.table,.BY)
-importFrom(data.table,.EACHI)
-importFrom(data.table,.GRP)
-importFrom(data.table,.I)
-importFrom(data.table,.N)
-importFrom(data.table,.NGRP)
-importFrom(data.table,.SD)
-importFrom(data.table,as.data.table)
-importFrom(data.table,copy)
-importFrom(data.table,data.table)
-importFrom(data.table,rbindlist)
-importFrom(data.table,set)
-importFrom(data.table,setkey)
-importFrom(dplyr,group_by)
-importFrom(dplyr,mutate)
-importFrom(dplyr,summarise)
+importFrom(data.table,
+  ":=",
+  .BY,
+  .EACHI,
+  .GRP,
+  .I,
+  .N,
+  .NGRP,
+  .SD,
+  as.data.table,
+  copy,
+  data.table,
+  rbindlist,
+  set,
+  setkey
+)
+importFrom(dplyr,
+  group_by,
+  mutate,
+  summarise
+)
 importFrom(exactextractr,exact_extract)
 importFrom(future.apply,future_lapply)
 importFrom(ggforce,facet_wrap_paginate)
-importFrom(ggplot2,aes)
-importFrom(ggplot2,element_text)
-importFrom(ggplot2,geom_boxplot)
-importFrom(ggplot2,geom_errorbar)
-importFrom(ggplot2,geom_line)
-importFrom(ggplot2,geom_point)
-importFrom(ggplot2,geom_violin)
-importFrom(ggplot2,ggplot)
-importFrom(ggplot2,guide_axis)
-importFrom(ggplot2,scale_x_discrete)
-importFrom(ggplot2,theme)
-importFrom(ggplot2,theme_bw)
-importFrom(ggplot2,ylab)
-importFrom(landscapemetrics,get_patches)
-importFrom(landscapemetrics,lsm_c_ai)
-importFrom(landscapemetrics,lsm_c_area_cv)
-importFrom(landscapemetrics,lsm_c_area_mn)
-importFrom(landscapemetrics,lsm_c_area_sd)
-importFrom(landscapemetrics,lsm_c_ca)
-importFrom(landscapemetrics,lsm_l_area_mn)
-importFrom(landscapemetrics,lsm_l_area_sd)
-importFrom(landscapemetrics,lsm_l_cohesion)
-importFrom(landscapemetrics,lsm_l_condent)
-importFrom(landscapemetrics,lsm_l_core_cv)
-importFrom(landscapemetrics,lsm_l_core_mn)
-importFrom(landscapemetrics,lsm_l_core_sd)
-importFrom(landscapemetrics,lsm_l_ed)
-importFrom(landscapemetrics,lsm_l_iji)
-importFrom(landscapemetrics,lsm_p_area)
+importFrom(ggplot2,
+  aes,
+  element_text,
+  geom_boxplot,
+  geom_errorbar,
+  geom_line,
+  geom_point,
+  geom_violin,
+  ggplot,
+  guide_axis,
+  scale_x_discrete,
+  theme,
+  theme_bw,
+  ylab
+)
+importFrom(landscapemetrics,
+  get_patches,
+  lsm_c_ai,
+  lsm_c_area_cv,
+  lsm_c_area_mn,
+  lsm_c_area_sd,
+  lsm_c_ca,
+  lsm_l_area_mn,
+  lsm_l_area_sd,
+  lsm_l_cohesion,
+  lsm_l_condent,
+  lsm_l_core_cv,
+  lsm_l_core_mn,
+  lsm_l_core_sd,
+  lsm_l_ed,
+  lsm_l_iji,
+  lsm_p_area
+)
 importFrom(purrr,transpose)
 importFrom(rlang,.data)
-importFrom(sf,st_as_sf)
-importFrom(sf,st_read)
-importFrom(stats,median)
-importFrom(stats,na.omit)
-importFrom(stats,qt)
-importFrom(stats,quantile)
-importFrom(stats,sd)
-importFrom(terra,classify)
-importFrom(terra,compareGeom)
-importFrom(terra,crop)
-importFrom(terra,levels)
-importFrom(terra,mask)
-importFrom(terra,ncell)
-importFrom(terra,rast)
-importFrom(terra,rasterize)
-importFrom(terra,values)
-importFrom(tidyterra,filter)
-importFrom(tidyterra,pull)
-importFrom(tidyterra,select)
+importFrom(sf,
+  st_as_sf,
+  st_read
+)
+importFrom(stats,
+  median,
+  na.omit,
+  qt,
+  quantile,
+  sd
+)
+importFrom(terra,
+  classify,
+  compareGeom,
+  crop,
+  levels,
+  mask,
+  ncell,
+  rast,
+  rasterize,
+  values
+)
+importFrom(tidyterra,
+  filter,
+  pull,
+  select
+)
 importFrom(tools,file_path_sans_ext)
 importFrom(utils,globalVariables)

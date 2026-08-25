@@ -1,7 +1,7 @@
 Package: nrvtools
 Title: Tools for Summarizing Outputs From Natural Range of Variability
     Simulations
-Version: 0.2.11
+Version: 0.3.0
 Authors@R: 
     person(c("Alex", "M"), "Chubaty", , "achubaty@for-cast.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7146-8135"))
@@ -50,4 +50,4 @@ VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 LazyData: true
 LazyDataCompression: gzip
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
