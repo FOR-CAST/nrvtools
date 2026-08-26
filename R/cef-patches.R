@@ -225,16 +225,16 @@ conditionSeralPatchMap <- function(ssm, params = cef_patch_params(), quiet = FAL
 #' influence reaches 25-200 m into a patch, which at a 120 m cell is below the
 #' cell width for every band but the widest -- measured on the grid, three of the
 #' four buffers erode nothing at all, and interior forest comes back
-#' indistinguishable from total mature+old area. So this step is done in vector
-#' space, where a 25 m strip off a patch boundary is a real area.
+#' indistinguishable from total mature+old area. So this step is done at a finer
+#' resolution than the map's own, where a 25 m strip off a patch boundary is a
+#' real area.
 #'
-#' Only the *dissolved class geometries* are polygonized (one feature per seral
-#' class, not one per cell), each younger class is buffered at its true
-#' edge-influence distance, and those buffers are erased from the mature+old and
-#' old geometries per `params$interior_bands`. The result is attributed to
-#' reporting subregions by intersection and returned as an **area**, never
-#' rasterized back: re-gridding at the cell size would discard exactly the
-#' sub-cell precision the vector step exists to recover.
+#' Each younger class is eroded from the mature+old and old extents at its true
+#' edge-influence distance per `params$interior_bands`, at a resolution finer
+#' than the map's own -- either in polygon space (`method = "vector"`) or on a
+#' refined grid (`method = "subgrid"`). Results are returned as an **area** per
+#' subregion, never as a map re-gridded at the original cell size, which would
+#' discard exactly the sub-cell precision this step exists to recover.
 #'
 #' @template ssm
 #' @template summaryPolys
@@ -245,6 +245,36 @@ conditionSeralPatchMap <- function(ssm, params = cef_patch_params(), quiet = FAL
 #'   When `NULL`, all early stands are assigned the `early_o20` band and a
 #'   warning is issued -- the 200 m band is then never applied, which
 #'   understates edge influence.
+#' @param method How to erode the edge-influence buffers.
+#'
+#'   `"vector"` dissolves each class to a polygon, buffers, and erases. Exact,
+#'   but GEOS-bound: cost grows with geometry complexity, not cell count, and on
+#'   a district-sized landscape a single snapshot does not finish in an hour.
+#'
+#'   `"subgrid"` (default) refines the map by `subgrid_factor` and thresholds a
+#'   distance transform per band. Linear in cells where the polygon route is
+#'   superlinear in geometry complexity, and approximate to within about one
+#'   sub-cell. Measured against `"vector"` on a real 120 m seral map at
+#'   `subgrid_factor = 4`, interior area agreed to +1.0% (mature+old) and +0.3%
+#'   (old). The bias is slightly HIGH, because the distance to a
+#'   diagonally-placed stand is marginally overestimated. Use `"vector"` where
+#'   exactness matters more than run time.
+#'
+#'   The difference is what makes a district-sized landscape feasible at all. On
+#'   a 7.2M cell map (4.7M active), `"subgrid"` at `subgrid_factor = 4` takes
+#'   about 3 minutes per snapshot, where `"vector"` did not finish one snapshot
+#'   in an hour.
+#' @param subgrid_factor Refinement factor for `method = "subgrid"`; the
+#'   sub-cell is `res(ssm) / subgrid_factor`, and cost scales with its square.
+#'   `4` (a 30 m sub-cell on a 120 m grid) is the tested default and should be
+#'   treated as a floor rather than a preference: at `2` the 25 m mature band is
+#'   narrower than a sub-cell and vanishes entirely, which on a district-sized
+#'   map reported old interior forest as 85% of old extent against 64% at `4`.
+#'
+#'   Cost is not only time. A sub-grid layer for a district-sized map is of the
+#'   order of 10^8 cells, and peak memory ran to roughly 13 GB in testing, so
+#'   size the number of concurrent workers accordingly rather than assuming this
+#'   is a light task.
 #'
 #' @return A long `data.frame` (`layer`, `level`, `class`, `id`, `metric`,
 #'   `value`, `poly`) giving `interior_area_ha` and `interior_prop` for each
@@ -257,8 +287,12 @@ interiorForestSeral <- function(
   summaryPolys,
   polyCol,
   params = cef_patch_params(),
-  age = NULL
+  age = NULL,
+  method = c("subgrid", "vector"),
+  subgrid_factor = 4L
 ) {
+  method <- match.arg(method)
+  stopifnot(is.numeric(subgrid_factor), length(subgrid_factor) == 1L, subgrid_factor >= 1L)
   r <- .as_ssm(ssm)
   rat <- .ssm_rat(r)
   if (is.null(rat)) {
@@ -295,9 +329,48 @@ interiorForestSeral <- function(
   }
   codes <- c(early_u20 = 0L, early_o20 = 1L, mid = 2L, mature = 3L, old = 4L)
 
+  targets <- list(mature_old = c("mature", "old"), old = "old")
+
+  areas <- if (identical(method, "vector")) {
+    .interior_vector(band, codes, targets, params, summaryPolys, polyCol)
+  } else {
+    .interior_subgrid(band, codes, targets, params, summaryPolys, polyCol, subgrid_factor)
+  }
+  if (is.null(areas) || !nrow(areas)) {
+    return(.empty_metrics())
+  }
+
+  areas <- areas[areas$total_ha > 0, , drop = FALSE]
+  if (!nrow(areas)) {
+    return(.empty_metrics())
+  }
+  do.call(
+    rbind,
+    lapply(seq_len(nrow(areas)), function(i) {
+      data.frame(
+        layer = 1L,
+        level = "class",
+        class = areas$class[i],
+        id = NA_integer_,
+        metric = c("interior_area_ha", "interior_prop"),
+        value = c(areas$interior_ha[i], areas$interior_ha[i] / areas$total_ha[i]),
+        poly = areas$poly[i],
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+}
+
+## Exact interior forest via polygon geometry: dissolve each class, buffer the younger ones at their
+## true edge-influence distances, erase, and intersect with the subregions. Correct to the metre, but
+## GEOS-bound: the buffer and the repeated difference on a landscape-sized multipolygon dominate, and
+## at district size a single snapshot does not finish in an hour.
+## @return data.frame(class, poly, total_ha, interior_ha)
+#' @noRd
+.interior_vector <- function(band, codes, targets, params, summaryPolys, polyCol) {
   polys <- terra::as.polygons(band, dissolve = TRUE)
   if (!nrow(polys)) {
-    return(.empty_metrics())
+    return(NULL)
   }
   sp <- sf::st_make_valid(sf::st_as_sf(polys))
   names(sp)[1L] <- "code"
@@ -309,13 +382,11 @@ interiorForestSeral <- function(
     }
     sf::st_make_valid(sf::st_union(g))
   }
-  targets <- list(mature_old = c("mature", "old"), old = "old")
   bufs <- lapply(names(params$buffers), function(k) {
     g <- geom_of(k)
     if (is.null(g)) NULL else sf::st_make_valid(sf::st_buffer(g, params$buffers[[k]]))
   })
   names(bufs) <- names(params$buffers)
-
   ha <- function(g) if (is.null(g) || !length(g)) 0 else sum(as.numeric(sf::st_area(g))) / 1e4
 
   out <- lapply(names(targets), function(tg) {
@@ -333,33 +404,112 @@ interiorForestSeral <- function(
         break
       }
     }
-    ## attribute to subregions
-    rows <- lapply(seq_len(nrow(summaryPolys)), function(i) {
-      sub <- sf::st_geometry(summaryPolys[i, ])
-      tot_i <- ha(suppressWarnings(sf::st_intersection(total, sub)))
-      int_i <- if (!length(interior)) {
-        0
-      } else {
-        ha(suppressWarnings(sf::st_intersection(interior, sub)))
-      }
-      if (tot_i <= 0) {
-        return(NULL)
-      }
+    do.call(
+      rbind,
+      lapply(seq_len(nrow(summaryPolys)), function(i) {
+        sub <- sf::st_geometry(summaryPolys[i, ])
+        data.frame(
+          class = tg,
+          poly = as.character(summaryPolys[[polyCol]][i]),
+          total_ha = ha(suppressWarnings(sf::st_intersection(total, sub))),
+          interior_ha = if (!length(interior)) {
+            0
+          } else {
+            ha(suppressWarnings(sf::st_intersection(interior, sub)))
+          },
+          stringsAsFactors = FALSE
+        )
+      })
+    )
+  })
+  do.call(rbind, out)
+}
+
+## Interior forest via a sub-grid distance transform: refine the map by `fact`, and for each buffer
+## band keep the sub-cells whose distance to that band exceeds its edge-influence distance. Linear in
+## cells where the polygon route is superlinear in geometry complexity.
+##
+## `terra::distance()` returns the distance to the nearest cell CENTRE of the band, whereas the buffer
+## is measured from the band's EDGE, which is about half a sub-cell nearer -- hence the `- s/2`. The
+## residual is O(sub-cell size): it is exact for an axis-aligned boundary and slightly overestimates
+## the distance where the nearest stand lies diagonally, which biases interior forest marginally HIGH.
+## Raise `subgrid_factor` to shrink it, or use `method = "vector"` for the exact answer.
+## @return data.frame(class, poly, total_ha, interior_ha)
+#' @noRd
+.interior_subgrid <- function(band, codes, targets, params, summaryPolys, polyCol, fact) {
+  fact <- as.integer(fact)
+  sub <- if (fact > 1L) terra::disagg(band, fact = fact) else band
+  s <- terra::res(sub)[1L]
+  cell_ha <- prod(terra::res(sub)) / 1e4
+
+  ## zones: rasterize the subregions once onto the sub-grid, then count by zone
+  zone <- terra::rasterize(terra::vect(summaryPolys), sub, field = seq_len(nrow(summaryPolys)))
+  labels <- as.character(summaryPolys[[polyCol]])
+  count_by_zone <- function(mask) {
+    z <- terra::zonal(terra::ifel(mask, 1L, 0L), zone, fun = "sum", na.rm = TRUE)
+    stats::setNames(as.numeric(z[[2L]]), as.character(z[[1L]]))
+  }
+  ## NOT `sub %in% codes[...]`: terra's `%in%` is not an S4 group generic, so with terra imported
+  ## rather than attached it silently falls through to base::`%in%` and returns a plain logical
+  ## vector instead of a SpatRaster. `==` dispatches correctly either way.
+  mask_of <- function(keys) {
+    Reduce(`|`, lapply(unname(codes[keys]), function(cd) sub == cd))
+  }
+  nonempty <- function(mask) {
+    isTRUE(unname(terra::global(terra::ifel(mask, 1L, 0L), "sum", na.rm = TRUE)[[1L]]) > 0)
+  }
+
+  ## Accumulate band by band rather than building every band's keep-mask first and combining: at
+  ## district size a sub-grid layer is ~10^8 cells, and holding one per band alongside the target
+  ## masks is what drives peak memory. This keeps at most one band mask alive at a time.
+  totals <- list()
+  acc <- list()
+  for (tg in names(targets)) {
+    m <- mask_of(targets[[tg]])
+    if (nonempty(m)) {
+      totals[[tg]] <- count_by_zone(m)
+      acc[[tg]] <- m
+    }
+  }
+  if (!length(acc)) {
+    return(NULL)
+  }
+  for (k in unique(unlist(params$interior_bands))) {
+    users <- names(acc)[vapply(
+      names(acc),
+      function(tg) k %in% params$interior_bands[[tg]],
+      logical(1)
+    )]
+    if (!length(users)) {
+      next
+    }
+    band_mask <- sub == codes[[k]]
+    if (!nonempty(band_mask)) {
+      next ## band absent -> nothing to erode
+    }
+    keep_k <- (terra::distance(terra::ifel(band_mask, 1L, NA)) - s / 2) > params$buffers[[k]]
+    rm(band_mask)
+    for (tg in users) {
+      acc[[tg]] <- acc[[tg]] & keep_k
+    }
+    rm(keep_k)
+  }
+
+  do.call(
+    rbind,
+    lapply(names(acc), function(tg) {
+      tot <- totals[[tg]]
+      int <- count_by_zone(acc[[tg]])
+      idx <- names(tot)
       data.frame(
-        layer = 1L,
-        level = "class",
         class = tg,
-        id = NA_integer_,
-        metric = c("interior_area_ha", "interior_prop"),
-        value = c(int_i, int_i / tot_i),
-        poly = as.character(summaryPolys[[polyCol]][i]),
+        poly = labels[as.integer(idx)],
+        total_ha = unname(tot) * cell_ha,
+        interior_ha = unname(int[idx]) * cell_ha,
         stringsAsFactors = FALSE
       )
     })
-    do.call(rbind, rows)
-  })
-  out <- do.call(rbind, out)
-  if (is.null(out)) .empty_metrics() else out
+  )
 }
 
 #' Patch counts and area by CEF patch size class

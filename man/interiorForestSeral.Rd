@@ -9,7 +9,9 @@ interiorForestSeral(
   summaryPolys,
   polyCol,
   params = cef_patch_params(),
-  age = NULL
+  age = NULL,
+  method = c("subgrid", "vector"),
+  subgrid_factor = 4L
 )
 }
 \arguments{
@@ -26,6 +28,38 @@ interiorForestSeral(
 When \code{NULL}, all early stands are assigned the \code{early_o20} band and a
 warning is issued -- the 200 m band is then never applied, which
 understates edge influence.}
+
+\item{method}{How to erode the edge-influence buffers.
+
+\code{"vector"} dissolves each class to a polygon, buffers, and erases. Exact,
+but GEOS-bound: cost grows with geometry complexity, not cell count, and on
+a district-sized landscape a single snapshot does not finish in an hour.
+
+\code{"subgrid"} (default) refines the map by \code{subgrid_factor} and thresholds a
+distance transform per band. Linear in cells where the polygon route is
+superlinear in geometry complexity, and approximate to within about one
+sub-cell. Measured against \code{"vector"} on a real 120 m seral map at
+\code{subgrid_factor = 4}, interior area agreed to +1.0\% (mature+old) and +0.3\%
+(old). The bias is slightly HIGH, because the distance to a
+diagonally-placed stand is marginally overestimated. Use \code{"vector"} where
+exactness matters more than run time.
+
+The difference is what makes a district-sized landscape feasible at all. On
+a 7.2M cell map (4.7M active), \code{"subgrid"} at \code{subgrid_factor = 4} takes
+about 3 minutes per snapshot, where \code{"vector"} did not finish one snapshot
+in an hour.}
+
+\item{subgrid_factor}{Refinement factor for \code{method = "subgrid"}; the
+sub-cell is \code{res(ssm) / subgrid_factor}, and cost scales with its square.
+\code{4} (a 30 m sub-cell on a 120 m grid) is the tested default and should be
+treated as a floor rather than a preference: at \code{2} the 25 m mature band is
+narrower than a sub-cell and vanishes entirely, which on a district-sized
+map reported old interior forest as 85\% of old extent against 64\% at \code{4}.
+
+Cost is not only time. A sub-grid layer for a district-sized map is of the
+order of 10^8 cells, and peak memory ran to roughly 13 GB in testing, so
+size the number of concurrent workers accordingly rather than assuming this
+is a light task.}
 }
 \value{
 A long \code{data.frame} (\code{layer}, \code{level}, \code{class}, \code{id}, \code{metric},
@@ -37,17 +71,17 @@ The one part of the CEF patch definition a coarse grid cannot express. Edge
 influence reaches 25-200 m into a patch, which at a 120 m cell is below the
 cell width for every band but the widest -- measured on the grid, three of the
 four buffers erode nothing at all, and interior forest comes back
-indistinguishable from total mature+old area. So this step is done in vector
-space, where a 25 m strip off a patch boundary is a real area.
+indistinguishable from total mature+old area. So this step is done at a finer
+resolution than the map's own, where a 25 m strip off a patch boundary is a
+real area.
 }
 \details{
-Only the \emph{dissolved class geometries} are polygonized (one feature per seral
-class, not one per cell), each younger class is buffered at its true
-edge-influence distance, and those buffers are erased from the mature+old and
-old geometries per \code{params$interior_bands}. The result is attributed to
-reporting subregions by intersection and returned as an \strong{area}, never
-rasterized back: re-gridding at the cell size would discard exactly the
-sub-cell precision the vector step exists to recover.
+Each younger class is eroded from the mature+old and old extents at its true
+edge-influence distance per \code{params$interior_bands}, at a resolution finer
+than the map's own -- either in polygon space (\code{method = "vector"}) or on a
+refined grid (\code{method = "subgrid"}). Results are returned as an \strong{area} per
+subregion, never as a map re-gridded at the original cell size, which would
+discard exactly the sub-cell precision this step exists to recover.
 }
 \seealso{
 \code{\link[=cef_patch_params]{cef_patch_params()}}, \code{\link[=conditionSeralPatchMap]{conditionSeralPatchMap()}}

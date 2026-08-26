@@ -1,3 +1,13 @@
+# nrvtools 0.3.1
+
+- `interiorForestSeral()` gains a `method` argument. The new default, `"subgrid"`, refines the map by `subgrid_factor` and thresholds a distance transform per edge-influence band instead of buffering and erasing polygons. It is linear in cells where the polygon route is superlinear in geometry complexity, which is what makes a district-sized landscape feasible: on a 7.2M cell map it takes about 3 minutes per snapshot, where `method = "vector"` did not finish a single snapshot in an hour. `"vector"` remains available and is still the exact answer.
+- Measured against `"vector"` on a real 120 m seral map at `subgrid_factor = 4`, interior area agrees to +1.0% (mature+old) and +0.3% (old). The bias is slightly high: `terra::distance()` reports the distance to the nearest cell *centre* of a band whereas the buffer is measured from its edge, corrected here by half a sub-cell, which marginally overestimates the distance to a diagonally-placed stand.
+- `subgrid_factor = 4` is a floor, not a preference. At `2` the 25 m mature band is narrower than a sub-cell and disappears entirely, reporting old interior forest as 85% of old extent on a district-sized map against 64% at `4`. Peak memory reached roughly 13 GB at that size, so concurrent workers need sizing accordingly.
+
+## Bug fix
+
+- The sub-grid backend built its target masks with `%in%`, which is not an S4 group generic in \pkg{terra}. With terra imported rather than attached this fell through to `base::%in%` and returned a plain logical vector instead of a `SpatRaster`, erroring in the next `terra::ifel()` call. Target masks are now built with `==`, which dispatches either way.
+
 # nrvtools 0.3.0
 
 ## Seral patch metrics now follow the CEF forest-biodiversity protocol

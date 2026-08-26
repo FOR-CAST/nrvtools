@@ -133,11 +133,11 @@ test_that("interiorForestSeral() erodes in vector space where the raster cannot"
   polys <- sf::st_as_sf(terra::as.polygons(terra::ext(r), crs = terra::crs(r)))
   polys$region <- "all"
 
-  d <- interiorForestSeral(r, polys, "region", age = NULL)
+  d <- interiorForestSeral(r, polys, "region", age = NULL, method = "vector")
   old <- d[d$class == "old", ]
   prop <- old$value[old$metric == "interior_prop"]
 
-  ## the 52 m mid buffer is sub-cell, so the raster would retain 100%; vector must not
+  ## the 52 m mid buffer is sub-cell, so eroding on the 120 m grid would retain 100%
   expect_lt(prop, 1)
   expect_gt(prop, 0)
   ## a 20x20 cell block (2400 m across) eroded 52 m on each side keeps (2400-104)^2/2400^2
@@ -168,4 +168,74 @@ test_that("mature+old interior forest does not collapse onto old-only", {
   a <- d$value[d$class == "mature_old" & d$metric == "interior_area_ha"]
   b <- d$value[d$class == "old" & d$metric == "interior_area_ha"]
   expect_gt(a, b)
+})
+
+test_that("the subgrid backend approximates the vector backend", {
+  ## a 20x20 cell old block inside mid: interior is analytic, (2400 - 2*52)^2 / 2400^2
+  r <- seral_map(nrow = 40, ncol = 40)
+  r[10:29, 10:29] <- 4L
+  r <- label_seral(r)
+  polys <- sf::st_as_sf(terra::as.polygons(terra::ext(r), crs = terra::crs(r)))
+  polys$region <- "all"
+  expected <- (2400 - 2 * 52)^2 / 2400^2
+
+  vec <- interiorForestSeral(r, polys, "region", method = "vector")
+  sg <- interiorForestSeral(r, polys, "region", method = "subgrid", subgrid_factor = 4L)
+  prop <- function(d) d$value[d$class == "old" & d$metric == "interior_prop"]
+
+  expect_equal(prop(vec), expected, tolerance = 1e-3)
+  ## one sub-cell is 30 m on a 2400 m block, so a few percent is the expected agreement
+  expect_equal(prop(sg), expected, tolerance = 0.05)
+  expect_equal(prop(sg), prop(vec), tolerance = 0.05)
+})
+
+test_that("subgrid_factor must be fine enough for the narrowest band", {
+  ## The 25 m mature band is what sets the default. A 60 m sub-cell (factor 2 on a 120 m grid)
+  ## cannot express it -- the nearest sub-cell centre is already further than 25 m away, so nothing
+  ## is eroded and old interior forest comes back as the whole old extent. A 30 m sub-cell can.
+  ## Accuracy is NOT monotone in subgrid_factor for every band: a 52 m band erodes one 60 m ring at
+  ## factor 2 and two 30 m rings at factor 4, i.e. the same 60 m either way.
+  r <- seral_map(nrow = 40, ncol = 40)
+  r[10:29, 10:29] <- 3L ## mature surround
+  r[15:24, 15:24] <- 4L ## old core, so the only adjacent band is mature (25 m)
+  r <- label_seral(r)
+  polys <- sf::st_as_sf(terra::as.polygons(terra::ext(r), crs = terra::crs(r)))
+  polys$region <- "all"
+  prop <- function(f) {
+    d <- suppressWarnings(interiorForestSeral(
+      r,
+      polys,
+      "region",
+      method = "subgrid",
+      subgrid_factor = f
+    ))
+    d$value[d$class == "old" & d$metric == "interior_prop"]
+  }
+  expect_equal(prop(1L), 1) ## no sub-grid at all -> the band is invisible
+  expect_equal(prop(2L), 1) ## 60 m sub-cell -> still invisible
+  expect_lt(prop(4L), 1) ## 30 m sub-cell -> the band finally bites
+})
+
+test_that("both backends agree on which bands each target erases", {
+  ## mature+old must keep its mature stands under either backend (see cef_patch_params)
+  r <- seral_map(nrow = 40, ncol = 40)
+  r[10:29, 10:29] <- 3L
+  r[15:24, 15:24] <- 4L
+  r <- label_seral(r)
+  polys <- sf::st_as_sf(terra::as.polygons(terra::ext(r), crs = terra::crs(r)))
+  polys$region <- "all"
+  for (m in c("vector", "subgrid")) {
+    d <- suppressWarnings(interiorForestSeral(r, polys, "region", method = m))
+    a <- d$value[d$class == "mature_old" & d$metric == "interior_area_ha"]
+    b <- d$value[d$class == "old" & d$metric == "interior_area_ha"]
+    expect_gt(a, b)
+  }
+})
+
+test_that("interiorForestSeral() validates method and subgrid_factor", {
+  r <- label_seral(seral_map(nrow = 10, ncol = 10))
+  polys <- sf::st_as_sf(terra::as.polygons(terra::ext(r), crs = terra::crs(r)))
+  polys$region <- "all"
+  expect_error(interiorForestSeral(r, polys, "region", method = "nonesuch"), "arg")
+  expect_error(interiorForestSeral(r, polys, "region", subgrid_factor = 0L), "subgrid_factor")
 })
