@@ -37,8 +37,17 @@ closing of \code{floor(separation_m / res)} cells is applied per class.
 \item \strong{Absorption.} \code{\link[terra:sieve]{terra::sieve()}} requires a threshold of at least two
 cells, so \code{min_patch_ha} is expressible only where two cells are smaller
 than it. Where they are not, absorption is skipped rather than silently
-applied at the wrong scale.
+applied at the wrong scale, and \code{\link[=patchAreaStatsSeral]{patchAreaStatsSeral()}} /
+\code{\link[=patchSizeClassesSeral]{patchSizeClassesSeral()}} apply the threshold as a reporting filter instead.
 }
+
+Note one deliberate divergence from the arcpy scripts: \code{terra::sieve()}
+absorbs a sub-threshold patch into its \strong{largest neighbouring patch}, where
+arcpy \code{Eliminate} merges it into the neighbour sharing the \strong{longest border}.
+On a binary mask the two agree, but this runs on the multi-class seral map,
+where they can differ. The step is inert at the 120 m cell size these
+simulations use (a 1 ha threshold is below the two-cell minimum), so the
+divergence is currently dormant; it would matter at a 30 or 90 m cell.
 
 The realised behaviour is recorded on the returned raster as the attribute
 \code{"cef_realised"} and, unless \code{quiet}, reported via \code{\link[base:message]{base::message()}}. Callers

@@ -120,7 +120,16 @@ cef_patch_params <- function(
 #' - **Absorption.** [terra::sieve()] requires a threshold of at least two
 #'   cells, so `min_patch_ha` is expressible only where two cells are smaller
 #'   than it. Where they are not, absorption is skipped rather than silently
-#'   applied at the wrong scale.
+#'   applied at the wrong scale, and [patchAreaStatsSeral()] /
+#'   [patchSizeClassesSeral()] apply the threshold as a reporting filter instead.
+#'
+#' Note one deliberate divergence from the arcpy scripts: `terra::sieve()`
+#' absorbs a sub-threshold patch into its **largest neighbouring patch**, where
+#' arcpy `Eliminate` merges it into the neighbour sharing the **longest border**.
+#' On a binary mask the two agree, but this runs on the multi-class seral map,
+#' where they can differ. The step is inert at the 120 m cell size these
+#' simulations use (a 1 ha threshold is below the two-cell minimum), so the
+#' divergence is currently dormant; it would matter at a 30 or 90 m cell.
 #'
 #' The realised behaviour is recorded on the returned raster as the attribute
 #' `"cef_realised"` and, unless `quiet`, reported via [base::message()]. Callers
@@ -512,6 +521,52 @@ interiorForestSeral <- function(
   )
 }
 
+## Apply the protocol's residual-patch floor to a per-patch area table, as a REPORTING filter.
+##
+## The CEF protocol treats patches below `min_patch_ha` as residual, and arcpy `Eliminate` absorbs
+## them. Where the grid can express that, `conditionSeralPatchMap()` has already removed them; where
+## it cannot -- a 1 ha threshold is smaller than a single cell at 120 m, and `terra::sieve()` will not
+## go below two cells -- they survive into the map and would otherwise be counted as patches. The
+## sibling vector implementation of this protocol hit the same thing from the other direction, where
+## overlay fragments produced a smallest reported old patch of 4.6e-6 m2.
+##
+## This filters the STATISTICS only. It does not alter the patch map, `patchAreasSeral()`'s raw
+## distribution, or the \pkg{landscapemetrics} class metrics, which are reported as that package
+## computes them.
+## @return list(kept, excluded_n, excluded_ha) by class.
+#' @noRd
+.apply_patch_floor <- function(areas, min_patch_ha) {
+  keep <- as.numeric(areas$value) >= min_patch_ha
+  dropped <- areas[!keep, , drop = FALSE]
+  list(
+    kept = areas[keep, , drop = FALSE],
+    excluded_n = table(as.character(dropped$class)),
+    excluded_ha = tapply(as.numeric(dropped$value), as.character(dropped$class), sum)
+  )
+}
+
+## Long-format rows recording what the floor removed, so an excluded patch is visible rather than
+## silently absent from the counts.
+#' @noRd
+.floor_report_rows <- function(fl, classes) {
+  do.call(
+    rbind,
+    lapply(classes, function(k) {
+      n <- if (k %in% names(fl$excluded_n)) as.numeric(fl$excluded_n[[k]]) else 0
+      a <- if (k %in% names(fl$excluded_ha)) as.numeric(fl$excluded_ha[[k]]) else 0
+      data.frame(
+        layer = 1L,
+        level = "class",
+        class = k,
+        id = NA_integer_,
+        metric = c("n_patches_below_floor", "area_ha_below_floor"),
+        value = c(n, a),
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+}
+
 #' Patch counts and area by CEF patch size class
 #'
 #' Bins each patch's area into the protocol's size classes and reports, per seral
@@ -520,13 +575,19 @@ interiorForestSeral <- function(
 #' area of old forest while that area migrates from a few large patches into many
 #' small ones, which the class-total metrics alone will not show.
 #'
+#' Patches below `params$min_patch_ha` are excluded, matching the protocol's
+#' residual-patch threshold. This is a reporting filter: it does not alter the
+#' patch map or [patchAreasSeral()]'s raw distribution. What it removed is
+#' reported alongside as `n_patches_below_floor` / `area_ha_below_floor`, so an
+#' excluded patch is visible rather than silently absent.
+#'
 #' @template ssm
 #' @param params Parameter list from [cef_patch_params()]; `size_classes`
-#'   supplies the breaks.
+#'   supplies the breaks and `min_patch_ha` the floor.
 #'
 #' @return A long `data.frame` with `metric` of the form `n_patches_<class>` and
 #'   `area_ha_<class>` (e.g. `n_patches_81_250`), one row per seral class x size
-#'   class.
+#'   class, plus the two `*_below_floor` rows per class.
 #'
 #' @export
 #' @seealso [patchAreaStatsSeral()], [cef_patch_params()]
@@ -535,6 +596,13 @@ patchSizeClassesSeral <- function(ssm, params = cef_patch_params()) {
   areas <- patchAreasSeral(r)
   if (!nrow(areas)) {
     return(.empty_metrics())
+  }
+  all_classes <- unique(as.character(areas$class))
+  fl <- .apply_patch_floor(areas, params$min_patch_ha)
+  extra <- .floor_report_rows(fl, all_classes)
+  areas <- fl$kept
+  if (!nrow(areas)) {
+    return(extra)
   }
   br <- params$size_classes
   tags <- paste0(
@@ -581,7 +649,8 @@ patchSizeClassesSeral <- function(ssm, params = cef_patch_params()) {
       metric = paste0("area_ha_", res$size_class),
       value = as.numeric(res$area_ha),
       stringsAsFactors = FALSE
-    )
+    ),
+    extra
   )
 }
 
@@ -591,32 +660,50 @@ patchSizeClassesSeral <- function(ssm, params = cef_patch_params()) {
 #' `_sd` / `_cv`) with the order statistics, matching the patch-area summary the
 #' sibling vector implementation of this protocol reports.
 #'
+#' Patches below `params$min_patch_ha` are excluded (see
+#' [patchSizeClassesSeral()]); without that floor the minimum is whatever the
+#' grid's smallest speckle happens to be, which is a property of the cell size
+#' rather than of the landscape.
+#'
 #' @template ssm
+#' @param params Parameter list from [cef_patch_params()]; `min_patch_ha`
+#'   supplies the floor.
 #'
 #' @return A long `data.frame` with `metric` in `area_min`, `area_median`,
-#'   `area_max` (hectares), one row per seral class.
+#'   `area_max` (hectares), one row per seral class, plus
+#'   `n_patches_below_floor` / `area_ha_below_floor`.
 #'
 #' @export
 #' @seealso [patchSizeClassesSeral()], [patchAreasSeral()]
-patchAreaStatsSeral <- function(ssm) {
+patchAreaStatsSeral <- function(ssm, params = cef_patch_params()) {
   r <- .as_ssm(ssm)
   areas <- patchAreasSeral(r)
   if (!nrow(areas)) {
     return(.empty_metrics())
   }
+  all_classes <- unique(as.character(areas$class))
+  fl <- .apply_patch_floor(areas, params$min_patch_ha)
+  extra <- .floor_report_rows(fl, all_classes)
+  areas <- fl$kept
+  if (!nrow(areas)) {
+    return(extra)
+  }
   sp <- split(as.numeric(areas$value), as.character(areas$class))
-  do.call(
-    rbind,
-    lapply(names(sp), function(k) {
-      data.frame(
-        layer = 1L,
-        level = "class",
-        class = k,
-        id = NA_integer_,
-        metric = c("area_min", "area_median", "area_max"),
-        value = c(min(sp[[k]]), stats::median(sp[[k]]), max(sp[[k]])),
-        stringsAsFactors = FALSE
-      )
-    })
+  rbind(
+    do.call(
+      rbind,
+      lapply(names(sp), function(k) {
+        data.frame(
+          layer = 1L,
+          level = "class",
+          class = k,
+          id = NA_integer_,
+          metric = c("area_min", "area_median", "area_max"),
+          value = c(min(sp[[k]]), stats::median(sp[[k]]), max(sp[[k]])),
+          stringsAsFactors = FALSE
+        )
+      })
+    ),
+    extra
   )
 }

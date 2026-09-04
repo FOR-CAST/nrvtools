@@ -10,12 +10,12 @@ patchSizeClassesSeral(ssm, params = cef_patch_params())
 \item{ssm}{character, specifying the file path to a seral stage map raster (\code{.tif})}
 
 \item{params}{Parameter list from \code{\link[=cef_patch_params]{cef_patch_params()}}; \code{size_classes}
-supplies the breaks.}
+supplies the breaks and \code{min_patch_ha} the floor.}
 }
 \value{
 A long \code{data.frame} with \code{metric} of the form \verb{n_patches_<class>} and
 \verb{area_ha_<class>} (e.g. \code{n_patches_81_250}), one row per seral class x size
-class.
+class, plus the two \verb{*_below_floor} rows per class.
 }
 \description{
 Bins each patch's area into the protocol's size classes and reports, per seral
@@ -23,6 +23,13 @@ class, the number of patches and the total area in each. Patch size class is a
 headline CEF biodiversity indicator: a landscape can hold a constant total
 area of old forest while that area migrates from a few large patches into many
 small ones, which the class-total metrics alone will not show.
+}
+\details{
+Patches below \code{params$min_patch_ha} are excluded, matching the protocol's
+residual-patch threshold. This is a reporting filter: it does not alter the
+patch map or \code{\link[=patchAreasSeral]{patchAreasSeral()}}'s raw distribution. What it removed is
+reported alongside as \code{n_patches_below_floor} / \code{area_ha_below_floor}, so an
+excluded patch is visible rather than silently absent.
 }
 \seealso{
 \code{\link[=patchAreaStatsSeral]{patchAreaStatsSeral()}}, \code{\link[=cef_patch_params]{cef_patch_params()}}

@@ -1,3 +1,20 @@
+# nrvtools 0.3.2
+
+Mirrors corrections made to a sibling implementation of the same CEF section 3.2.2 protocol, which reruns found had invalidated a published analysis.
+
+- `patchAreaStatsSeral()` and `patchSizeClassesSeral()` now exclude patches below `cef_patch_params()$min_patch_ha`, matching the protocol's residual-patch threshold and the threshold arcpy `Eliminate` applies. Without it the reported minimum patch area is whatever the grid's smallest speckle happens to be, which is a property of the cell size rather than of the landscape. This is a reporting filter only: it does not alter the patch map, `patchAreasSeral()`'s raw distribution, or the \pkg{landscapemetrics} class metrics. What it removed is reported alongside as `n_patches_below_floor` and `area_ha_below_floor`, so an excluded patch is visible rather than silently absent.
+- `patchAreaStatsSeral()` gains a `params` argument to supply that threshold.
+
+The floor is inert at the 120 m cell size these simulations use, where a single cell is already 1.44 ha; it bites at 30 or 90 m. Measured on a real seral map: 0 patches excluded at 120 m, and 11-31 per seral class once the same map is expressed at 30 m.
+
+## Documented, not changed
+
+`conditionSeralPatchMap()` absorbs sub-threshold patches with `terra::sieve()`, which merges into the **largest neighbouring patch**, where arcpy `Eliminate` merges into the neighbour sharing the **longest border**. The two agree on a binary mask but can differ on the multi-class seral map. The step is inert at 120 m, so the divergence is currently dormant; it is now called out in the documentation rather than left implicit.
+
+## Confirmed not applicable
+
+Several defects corrected in the sibling implementation do not arise here, checked rather than assumed: it used `terra::union()` and `terra::erase()` (the latter hitting terra #2175), where the vector backend here uses `sf::st_union()` / `sf::st_difference()`; and its interior-forest target was not restricted to the mature/old classes, where the targets here are built from explicit class codes. A regression test now pins the latter.
+
 # nrvtools 0.3.1
 
 - `interiorForestSeral()` gains a `method` argument. The new default, `"subgrid"`, refines the map by `subgrid_factor` and thresholds a distance transform per edge-influence band instead of buffering and erasing polygons. It is linear in cells where the polygon route is superlinear in geometry complexity, which is what makes a district-sized landscape feasible: on a 7.2M cell map it takes about 3 minutes per snapshot, where `method = "vector"` did not finish a single snapshot in an hour. `"vector"` remains available and is still the exact answer.

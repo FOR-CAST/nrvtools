@@ -95,7 +95,10 @@ test_that("patchAreaStatsSeral() returns order statistics per class", {
   d <- patchAreaStatsSeral(r)
 
   old <- d[d$class == "old", ]
-  expect_setequal(old$metric, c("area_min", "area_median", "area_max"))
+  expect_setequal(
+    old$metric,
+    c("area_min", "area_median", "area_max", "n_patches_below_floor", "area_ha_below_floor")
+  )
   cell_ha <- prod(terra::res(r)) / 1e4
   expect_equal(old$value[old$metric == "area_max"], 16 * cell_ha)
   expect_equal(old$value[old$metric == "area_min"], 4 * cell_ha)
@@ -238,4 +241,60 @@ test_that("interiorForestSeral() validates method and subgrid_factor", {
   polys$region <- "all"
   expect_error(interiorForestSeral(r, polys, "region", method = "nonesuch"), "arg")
   expect_error(interiorForestSeral(r, polys, "region", subgrid_factor = 0L), "subgrid_factor")
+})
+
+test_that("patch statistics apply the residual-patch floor and report what it removed", {
+  ## 30 m cells: a single cell is 0.09 ha, so sub-1-ha speckle is representable and must be excluded
+  r <- seral_map(res_m = 30, nrow = 60, ncol = 60)
+  r[10:29, 10:29] <- 4L ## 400 cells * 0.09 = 36 ha
+  r[40, 40] <- 4L ## one cell = 0.09 ha, below the 1 ha floor
+  r[45, 45] <- 4L ## another
+  r <- label_seral(r)
+
+  d <- patchAreaStatsSeral(r)
+  old <- d[d$class == "old", ]
+  ## the floor must set the minimum, not the speckle
+  expect_equal(old$value[old$metric == "area_min"], 36, tolerance = 1e-6)
+  expect_equal(old$value[old$metric == "n_patches_below_floor"], 2)
+  expect_equal(old$value[old$metric == "area_ha_below_floor"], 0.18, tolerance = 1e-6)
+
+  sz <- patchSizeClassesSeral(r)
+  szo <- sz[sz$class == "old", ]
+  ## only the 36 ha patch is counted; the two speckles are reported separately
+  expect_equal(sum(szo$value[grepl("^n_patches_[0-9]", szo$metric)]), 1)
+  expect_equal(szo$value[szo$metric == "n_patches_below_floor"], 2)
+})
+
+test_that("the floor is inert where a single cell already exceeds it", {
+  ## at 120 m one cell is 1.44 ha, so nothing can fall below a 1 ha floor
+  r <- seral_map(nrow = 30, ncol = 30)
+  r[10:19, 10:19] <- 4L
+  r[25, 25] <- 4L ## a single 1.44 ha cell -- still above the floor
+  r <- label_seral(r)
+  d <- patchAreaStatsSeral(r)
+  old <- d[d$class == "old", ]
+  expect_equal(old$value[old$metric == "n_patches_below_floor"], 0)
+  expect_equal(old$value[old$metric == "area_min"], 1.44, tolerance = 1e-6)
+})
+
+test_that("unclassified land is never counted as patch area or interior forest", {
+  ## mirrors a defect in the sibling vector implementation, where the interior-forest target was
+  ## not restricted to the mature/old classes and half of reported old interior forest was
+  ## unclassified land.
+  r <- seral_map(nrow = 40, ncol = 40)
+  r[10:29, 10:29] <- 4L
+  r[1:5, 1:40] <- NA ## a band of unclassified land
+  r <- label_seral(r)
+  polys <- sf::st_as_sf(terra::as.polygons(terra::ext(r), crs = terra::crs(r)))
+  polys$region <- "all"
+
+  for (m in c("vector", "subgrid")) {
+    d <- interiorForestSeral(r, polys, "region", method = m)
+    tot <- d$value[d$class == "old" & d$metric == "interior_area_ha"]
+    ## old is a 20x20 block of 1.44 ha cells = 576 ha; interior can never exceed that
+    expect_lte(tot, 576 + 1e-6)
+    expect_gt(tot, 0)
+  }
+  ## and the NA band contributes no patches
+  expect_false(any(is.na(patchAreaStatsSeral(r)$class)))
 })
