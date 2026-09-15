@@ -63,18 +63,34 @@ default_patch_metrics <- function() {
 #' The following patch- and class-level metrics are calculated using
 #' \pkg{landscapemetrics} and \pkg{nrvtools}:
 #'
-#' - `patchAreasSeral`:  patch area (uses `lsm_p_area`);
+#' - `patchAreasSeral`: patch area (uses `lsm_p_area`);
+#' - `patchAreaStatsSeral`: min / median / max patch area by class;
+#' - `patchSizeClassesSeral`: patch counts and area by CEF patch size class;
+#' - `lsm_p_enn`, `lsm_c_enn_mn`, `lsm_c_enn_cv`, `lsm_c_enn_sd`: Euclidean
+#'   nearest-neighbour (interpatch) distance;
 #' - the subset of `default_patch_metrics()` from \pkg{landscapemetrics}
 #'   (i.e., prefixed with 'lsm_')
 #'
+#' Interior forest area is *not* in this list: [interiorForestSeral()] needs the
+#' reporting polygons, so it is called alongside `funList` rather than through it.
+#'
 #' @note patch ages don't make sense here since seral stage (based on age) determines patches
+#'
+#' @note `lsm_*_enn_*` report the distance between the nearest *cell centres* of
+#'   two patches, which is one cell width larger than the gap between them.
+#'   Subtract the cell size before comparing against an edge-to-edge distance
+#'   measured on polygons.
 #'
 #' @export
 #' @rdname default_metrics
 default_patch_metrics_seral <- function() {
   pm_default <- default_patch_metrics()
   lsm_default <- pm_default[grepl("lsm_", pm_default)]
-  append(list("patchAreasSeral"), lsm_default)
+  c(
+    list("patchAreasSeral", "patchAreaStatsSeral", "patchSizeClassesSeral"),
+    lsm_default,
+    list("lsm_p_enn", "lsm_c_enn_mn", "lsm_c_enn_cv", "lsm_c_enn_sd")
+  )
 }
 
 #' @section Default LandWeb Summary Metrics:

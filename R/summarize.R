@@ -155,8 +155,10 @@ open_nrv_dataset <- function(x) {
 #'   `Dataset` / query.
 #' @param value_col Name of the value column to aggregate (default `"value"`).
 #' @param id_cols Grouping columns; `NULL` (default) auto-detects those present
-#'   among `studyArea`, `scenario`, `time`, `poly`, `class`, `level`, `metric`,
-#'   `metric.1`.
+#'   among `studyArea`, `scenario`, `rptPoly`, `time`, `poly`, `class`, `level`,
+#'   `metric`, `metric.1`. (`rptPoly` names the reporting POLYGON LAYER a metric
+#'   was summarised over -- e.g. "BEC zones" vs "Landscape Units" -- where `poly`
+#'   is the individual subregion within that layer.)
 #'
 #' @return A `data.frame` with the id columns plus `n_reps`, `mean`, `sd`, `min`,
 #'   `q25`, `median`, `q75`, `max`, `se`, `ci`; zero rows if there is no data.
@@ -180,7 +182,7 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
   }
   if (is.null(id_cols)) {
     id_cols <- intersect(
-      c("studyArea", "scenario", "time", "poly", "class", "level", "metric", "metric.1"),
+      c("studyArea", "scenario", "rptPoly", "time", "poly", "class", "level", "metric", "metric.1"),
       cols
     )
   }

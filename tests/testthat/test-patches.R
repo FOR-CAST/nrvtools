@@ -124,6 +124,27 @@ testthat::test_that("patchStatsSeral guards a subregion with no flammable pixels
   testthat::expect_equal(nrow(inner[["patchAreasSeral"]]), 0L)
 })
 
+testthat::test_that("patchStatsSeral relabels class-level lsm_c_* codes with seral stage names", {
+  dir <- withr::local_tempdir()
+  ssm <- .create_mock_vtm()
+  levels(ssm) <- data.frame(ID = 1:3, values = c("Early", "Mid", "Late"))
+  flm <- terra::rast(matrix(1, nrow = 5, ncol = 5), crs = "EPSG:3857") ## all flammable
+  terra::ext(flm) <- terra::ext(ssm)
+  ssm_f <- file.path(dir, "seralStageMap_year0.tif")
+  flm_f <- file.path(dir, "flam.tif")
+  terra::writeRaster(ssm, ssm_f)
+  terra::writeRaster(flm, flm_f)
+  poly <- terra::as.polygons(terra::ext(ssm), crs = terra::crs(ssm))
+  poly$Name <- "Z1"
+
+  res <- patchStatsSeral(ssm_f, flm_f, "Z1", poly, "Name", c("lsm_c_ca", "patchAreasSeral"))[[1L]]
+
+  ## lsm_c_ca reports the raw integer category; it must come back as the stage name
+  testthat::expect_setequal(res[["lsm_c_ca"]]$class, c("Early", "Mid", "Late"))
+  ## patchAreasSeral already labels its classes and is unchanged
+  testthat::expect_setequal(res[["patchAreasSeral"]]$class, c("Early", "Mid", "Late"))
+})
+
 testthat::test_that("label_vegtype_classes() maps integer codes and leaves labels/non-matches alone", {
   vtm <- .create_mock_vtm() ## RAT: 1=forest, 2=grass, 3=water
 
@@ -142,6 +163,38 @@ testthat::test_that("label_vegtype_classes() maps integer codes and leaves label
   testthat::expect_equal(label_vegtype_classes(once, vtm)$class, once$class)
   testthat::expect_equal(label_vegtype_classes(df_chr[0, ], vtm)$class, character(0))
   testthat::expect_named(label_vegtype_classes(data.frame(value = 1:2), vtm), "value")
+})
+
+testthat::test_that("label_rat_classes() relabels from any categorical map's RAT", {
+  ssm <- terra::rast(matrix(c(1, 5, 9, 13), nrow = 2), crs = "EPSG:3857")
+  levels(ssm) <- data.frame(value = c(1, 5, 9, 13), seral = c("early", "mid", "mature", "old"))
+
+  df <- data.frame(class = c(1, 5, 9, 13), value = 1:4)
+  testthat::expect_equal(label_rat_classes(df, ssm)$class, c("early", "mid", "mature", "old"))
+  ## label_vegtype_classes() is the vegtype-facing spelling of the same operation
+  vtm <- .create_mock_vtm()
+  testthat::expect_equal(
+    label_vegtype_classes(data.frame(class = 1:3), vtm)$class,
+    label_rat_classes(data.frame(class = 1:3), vtm)$class
+  )
+})
+
+testthat::test_that(".parse_metric_labels() handles poly names containing '_' and '.'", {
+  labels <- c(
+    "rep01.vegTypeMap_year0000_SBSmc2",
+    "rep02.seralStageMap_year1200_NDT3_SBS",
+    "rep10.vegTypeMap_year0050_Big Creek",
+    "rep03.vegTypeMap_year0100_Mt. Tom_West"
+  )
+  out <- .parse_metric_labels(labels)
+
+  testthat::expect_equal(out$rep, c(1L, 2L, 10L, 3L))
+  testthat::expect_equal(out$time, c(0L, 1200L, 50L, 100L))
+  testthat::expect_equal(out$poly, c("SBSmc2", "NDT3_SBS", "Big Creek", "Mt. Tom_West"))
+})
+
+testthat::test_that(".parse_metric_labels() errors informatively on an unparseable label", {
+  testthat::expect_snapshot(error = TRUE, .parse_metric_labels("nonsense"))
 })
 
 testthat::test_that("subregion_forested_area() tabulates ha per subregion x species", {

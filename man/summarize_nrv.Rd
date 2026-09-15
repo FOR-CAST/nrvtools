@@ -13,8 +13,10 @@ summarize_nrv(x, value_col = "value", id_cols = NULL)
 \item{value_col}{Name of the value column to aggregate (default \code{"value"}).}
 
 \item{id_cols}{Grouping columns; \code{NULL} (default) auto-detects those present
-among \code{studyArea}, \code{scenario}, \code{time}, \code{poly}, \code{class}, \code{level}, \code{metric},
-\code{metric.1}.}
+among \code{studyArea}, \code{scenario}, \code{rptPoly}, \code{time}, \code{poly}, \code{class}, \code{level},
+\code{metric}, \code{metric.1}. (\code{rptPoly} names the reporting POLYGON LAYER a metric
+was summarised over -- e.g. "BEC zones" vs "Landscape Units" -- where \code{poly}
+is the individual subregion within that layer.)}
 }
 \value{
 A \code{data.frame} with the id columns plus \code{n_reps}, \code{mean}, \code{sd}, \code{min},

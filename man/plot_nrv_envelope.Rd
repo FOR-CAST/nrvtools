@@ -7,7 +7,7 @@
 plot_nrv_envelope(
   nrv_df,
   type = c("ribbon", "boxplot"),
-  facet = c("poly", "class", "metric", "metric.1"),
+  facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   ylab = "value",
   title = NULL,
   ncol = 4,
@@ -25,7 +25,8 @@ or a zero-row input returns \code{NULL}.}
 \code{"boxplot"} (box-and-whisker showing median and quartiles).}
 
 \item{facet}{Candidate faceting columns; those present and varying are combined
-into the panel label (default \code{c("poly", "class", "metric", "metric.1")}).}
+into the panel label (default \code{c("rptPoly", "poly", "class", "metric", "metric.1")}; \code{rptPoly} is the reporting polygon LAYER, \code{poly} the subregion
+within it).}
 
 \item{ylab}{Y-axis label.}
 

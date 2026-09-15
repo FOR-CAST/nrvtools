@@ -1,3 +1,61 @@
+# nrvtools 0.3.2
+
+Mirrors corrections made to a sibling implementation of the same CEF section 3.2.2 protocol, which reruns found had invalidated a published analysis.
+
+- `patchAreaStatsSeral()` and `patchSizeClassesSeral()` now exclude patches below `cef_patch_params()$min_patch_ha`, matching the protocol's residual-patch threshold and the threshold arcpy `Eliminate` applies. Without it the reported minimum patch area is whatever the grid's smallest speckle happens to be, which is a property of the cell size rather than of the landscape. This is a reporting filter only: it does not alter the patch map, `patchAreasSeral()`'s raw distribution, or the \pkg{landscapemetrics} class metrics. What it removed is reported alongside as `n_patches_below_floor` and `area_ha_below_floor`, so an excluded patch is visible rather than silently absent.
+- `patchAreaStatsSeral()` gains a `params` argument to supply that threshold.
+
+The floor is inert at the 120 m cell size these simulations use, where a single cell is already 1.44 ha; it bites at 30 or 90 m. Measured on a real seral map: 0 patches excluded at 120 m, and 11-31 per seral class once the same map is expressed at 30 m.
+
+## Documented, not changed
+
+`conditionSeralPatchMap()` absorbs sub-threshold patches with `terra::sieve()`, which merges into the **largest neighbouring patch**, where arcpy `Eliminate` merges into the neighbour sharing the **longest border**. The two agree on a binary mask but can differ on the multi-class seral map. The step is inert at 120 m, so the divergence is currently dormant; it is now called out in the documentation rather than left implicit.
+
+## Confirmed not applicable
+
+Several defects corrected in the sibling implementation do not arise here, checked rather than assumed: it used `terra::union()` and `terra::erase()` (the latter hitting terra #2175), where the vector backend here uses `sf::st_union()` / `sf::st_difference()`; and its interior-forest target was not restricted to the mature/old classes, where the targets here are built from explicit class codes. A regression test now pins the latter.
+
+# nrvtools 0.3.1
+
+- `interiorForestSeral()` gains a `method` argument. The new default, `"subgrid"`, refines the map by `subgrid_factor` and thresholds a distance transform per edge-influence band instead of buffering and erasing polygons. It is linear in cells where the polygon route is superlinear in geometry complexity, which is what makes a district-sized landscape feasible: on a 7.2M cell map it takes about 3 minutes per snapshot, where `method = "vector"` did not finish a single snapshot in an hour. `"vector"` remains available and is still the exact answer.
+- Measured against `"vector"` on a real 120 m seral map at `subgrid_factor = 4`, interior area agrees to +1.0% (mature+old) and +0.3% (old). The bias is slightly high: `terra::distance()` reports the distance to the nearest cell *centre* of a band whereas the buffer is measured from its edge, corrected here by half a sub-cell, which marginally overestimates the distance to a diagonally-placed stand.
+- `subgrid_factor = 4` is a floor, not a preference. At `2` the 25 m mature band is narrower than a sub-cell and disappears entirely, reporting old interior forest as 85% of old extent on a district-sized map against 64% at `4`. Peak memory reached roughly 13 GB at that size, so concurrent workers need sizing accordingly.
+
+## Bug fix
+
+- The sub-grid backend built its target masks with `%in%`, which is not an S4 group generic in \pkg{terra}. With terra imported rather than attached this fell through to `base::%in%` and returned a plain logical vector instead of a `SpatRaster`, erroring in the next `terra::ifel()` call. Target masks are now built with `==`, which dispatches either way.
+
+# nrvtools 0.3.0
+
+## Seral patch metrics now follow the CEF forest-biodiversity protocol
+
+Seral-stage patches were previously whatever `landscapemetrics::get_patches()` returned: an eight-neighbour connected component of same-class cells, with no minimum size, no edge-influence erosion and no size classes. They now follow the landscape-patch definition of the Interim Assessment Protocol for Forest Biodiversity in British Columbia (Cumulative Effects Framework), section 3.2.2.
+
+- `cef_patch_params()` (new, exported) holds the protocol's patch parameters -- edge-influence buffer distances, minimum patch area, patch separation distance, and patch size classes -- as one list, so that raster and vector implementations of the protocol read the same numbers from a single place.
+- `conditionSeralPatchMap()` (new, exported) applies the map-level steps of the definition (bridging same-class stands closer together than the separation distance, absorbing sub-threshold residual patches) so that downstream patch metrics are computed on a map whose connected components *are* protocol patches. Both steps are resolution-dependent and either may be inexpressible at coarse cell sizes; the realised thresholds are recorded on the result as the `"cef_realised"` attribute and reported via `message()`, rather than being silently applied at the wrong scale.
+- `interiorForestSeral()` (new, exported) computes interior forest area in vector space, on dissolved class geometries only. This is deliberate: edge influence reaches 25-200 m into a patch, which is below the cell width for all but the widest band at a 120 m cell size, so a grid-based erosion returns interior forest indistinguishable from total mature+old area. Results are returned as areas and proportions per subregion, never rasterized back.
+- `patchSizeClassesSeral()` (new, exported) reports patch counts and total area per seral class per protocol size class (0-40 / 41-80 / 81-250 / >250 ha). A landscape can hold a constant total area of old forest while that area migrates from a few large patches into many small ones; the class-total metrics alone do not show this.
+- `patchAreaStatsSeral()` (new, exported) adds minimum, median and maximum patch area per class, complementing the existing `lsm_c_area_mn` / `_sd` / `_cv` moments.
+- `default_patch_metrics_seral()` gains `patchAreaStatsSeral`, `patchSizeClassesSeral`, and the Euclidean nearest-neighbour (interpatch distance) metrics `lsm_p_enn`, `lsm_c_enn_mn`, `lsm_c_enn_cv`, `lsm_c_enn_sd`.
+
+### Two behaviours worth knowing about
+
+- `lsm_*_enn_*` report the distance between the nearest *cell centres* of two patches, which is **one cell width larger than the gap between them**. Subtract the cell size before comparing an interpatch distance against one measured edge-to-edge on polygons.
+- The mature+old interior-forest target erases only the early and mid edge-influence bands, not the 25 m mature band. The 25 m band is the edge influence of *mature* stands, which are themselves part of a mature+old patch; erasing it collapses mature+old interior forest onto old-only interior forest, making the two targets numerically identical. `cef_patch_params()$interior_bands` encodes this, and it is covered by a regression test.
+
+# nrvtools 0.2.11
+
+* **fix:** `calculateLandWebMetrics()` mis-labelled its results when a reporting layer mixed polygon names with different numbers of `_`-separated tokens. It split names on `"_"` and `purrr::transpose()`d them, which requires every element to be the same length; a layer holding both `ANC` and `DawsonCreek_TSA` therefore transposed to the wrong shape and recombined into the **cartesian product** of the tokens -- for LandWeb's WesternAlbertaUpland tenure layer that produced 45 fabricated names (`ANC_Edson`, `Canfor_GrandePr`, `Sundre_Hinton`, ...) in place of the 11 real ones, with `ANC`, `BlueRidge`, `Canfor`, `CanforWhitecourt`, `MillarWestern` and `Sundre` dropped entirely. It now uses the shared `_year<YYYY>_` marker parser (`.parse_metric_labels()`) introduced in 0.2.10 for `patchStats()` / `patchStatsSeral()` / `nrv_metrics_landscape()`, which this function was missed from. The labels were wrong but non-blank and the run completed normally, so `lw` aggregates produced by earlier versions should be regenerated;
+
+# nrvtools 0.2.10
+
+- `label_rat_classes()` (new, exported) generalises `label_vegtype_classes()` to any categorical map's RAT; `label_vegtype_classes()` is retained as the vegetation-type spelling of the same operation.
+- `nrv_metrics_landscape()` no longer mis-assigns `rep`/`time`/`poly` when a reporting subregion is empty. The 0.2.8 empty-subregion guard makes such a subregion contribute zero rows, but the identifiers were stamped onto the already row-bound table from full-length vectors, shifting every subsequent row's identifiers by one subregion; they are now stamped per subregion before binding (as on the patch-metric path).
+- `patchStatsSeral()` now relabels class-level `lsm_c_*` integer class codes with their seral stage names via the seral-stage map's RAT, matching the vegetation-type relabelling `patchStats()` has done since 0.2.5. Class-level seral metrics previously reported raw raster codes (`1`, `5`, `9`, `13`) rather than `early`/`mid`/`mature`/`old`.
+- `plot_nrv_envelope()` and `plot_nrv_distribution()` order panels by the faceting columns' own ordering rather than alphabetically by the pasted panel label, so a factor facet column (e.g. `factor(class, levels = seral_stages())`) panels in its declared order. Both also gain `rptPoly` as the first default faceting column.
+- `summarize_nrv()` auto-detects `rptPoly` as an identifier column, naming the reporting polygon LAYER a metric was summarised over (where `poly` is the subregion within that layer), so metrics computed over several reporting layers aggregate without collapsing across them.
+- Reporting polygon names containing more than one underscore no longer abort `calculatePatchMetrics()`, `calculatePatchMetricsSeral()`, and `nrv_metrics_landscape()` with "polyName contains too many underscores"; names are now parsed as everything following the `_year<YYYY>_` marker, so names containing `_` or `.` (BEC subzones, NDT-BEC codes, landscape unit names) all parse correctly.
+
 # nrvtools 0.2.9
 
 - `funList` entries passed to `nrv_metrics_landscape()`, `patchStats()`, `patchStatsSeral()`, and `calculateLandWebMetrics()` may now be explicit `pkg::fun` strings (e.g. `"landscapemetrics::lsm_l_ta"`) in addition to bare function names, resolved from the named package's namespace so a caller can disambiguate or reach a function not otherwise on the search path (#1).

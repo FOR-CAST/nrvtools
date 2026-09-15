@@ -206,3 +206,26 @@ test_that("plot_nrv_distribution returns a ggplot and NULL on empty", {
   expect_s3_class(plot_nrv_distribution(df, cc = cc), "ggplot")
   expect_null(plot_nrv_distribution(data.frame()))
 })
+
+test_that(".parse_metric_labels() survives a layer mixing 1- and 2-token poly names", {
+  ## calculateLandWebMetrics() used to split on "_" and purrr::transpose(), which requires every
+  ## element to have the same number of tokens. The tenure layer mixes "ANC" with
+  ## "DawsonCreek_TSA", so transpose recombined them into the cartesian product of tokens
+  ## ("ANC_Edson", "Canfor_GrandePr", ...) and dropped the 1-token names entirely.
+  labels <- c(
+    "rep01.vegTypeMap_year0700_ANC",
+    "rep01.vegTypeMap_year0700_DawsonCreek_TSA",
+    "rep02.vegTypeMap_year0950_WeyCo_GrandePr",
+    "rep05.standAgeMap_year1000_Boreal PLain WF_Hinton"
+  )
+  out <- .parse_metric_labels(labels)
+
+  expect_equal(out$rep, c(1L, 1L, 2L, 5L))
+  expect_equal(out$time, c(700L, 700L, 950L, 1000L))
+  expect_equal(
+    out$poly,
+    c("ANC", "DawsonCreek_TSA", "WeyCo_GrandePr", "Boreal PLain WF_Hinton")
+  )
+  ## no name is fabricated by recombination, and none is lost
+  expect_length(unique(out$poly), 4L)
+})

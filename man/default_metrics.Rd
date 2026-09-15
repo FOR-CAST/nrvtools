@@ -20,6 +20,11 @@ Default metrics
 }
 \note{
 patch ages don't make sense here since seral stage (based on age) determines patches
+
+\verb{lsm_*_enn_*} report the distance between the nearest \emph{cell centres} of
+two patches, which is one cell width larger than the gap between them.
+Subtract the cell size before comparing against an edge-to-edge distance
+measured on polygons.
 }
 \section{Default Landscape Metrics}{
 
@@ -60,10 +65,17 @@ The following patch- and class-level metrics are calculated using
 The following patch- and class-level metrics are calculated using
 \pkg{landscapemetrics} and \pkg{nrvtools}:
 \itemize{
-\item \code{patchAreasSeral}:  patch area (uses \code{lsm_p_area});
+\item \code{patchAreasSeral}: patch area (uses \code{lsm_p_area});
+\item \code{patchAreaStatsSeral}: min / median / max patch area by class;
+\item \code{patchSizeClassesSeral}: patch counts and area by CEF patch size class;
+\item \code{lsm_p_enn}, \code{lsm_c_enn_mn}, \code{lsm_c_enn_cv}, \code{lsm_c_enn_sd}: Euclidean
+nearest-neighbour (interpatch) distance;
 \item the subset of \code{default_patch_metrics()} from \pkg{landscapemetrics}
 (i.e., prefixed with 'lsm_')
 }
+
+Interior forest area is \emph{not} in this list: \code{\link[=interiorForestSeral]{interiorForestSeral()}} needs the
+reporting polygons, so it is called alongside \code{funList} rather than through it.
 }
 
 \section{Default LandWeb Summary Metrics}{

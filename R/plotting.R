@@ -2,6 +2,21 @@ utils::globalVariables(c(
   "class", "time", "count", "PANEL"
 ))
 
+## Combine the faceting columns of `df` into a single " | "-separated panel label, as an ORDERED
+## factor. Panels follow the ordering of the faceting columns themselves -- a factor column keeps its
+## own level order (so e.g. `factor(class, levels = seral_stages())` panels early -> mid -> mature ->
+## old instead of ggplot2's default alphabetical "early, mature, mid, old"), and any other column
+## sorts naturally. Only observed combinations become levels, so no empty panels are drawn.
+.panel_factor <- function(df, facet, sep = " | ") {
+  lab <- do.call(paste, c(df[facet], sep = sep))
+  keys <- lapply(facet, function(cc) {
+    v <- df[[cc]]
+    if (is.factor(v)) v else factor(v, levels = sort(unique(v)))
+  })
+  ord <- do.call(order, keys) ## first facet column is the primary key; the last varies fastest
+  factor(lab, levels = unique(lab[ord]))
+}
+
 #' Leading-vegetation age-class boxplot (v2 LandWeb_summary form)
 #'
 #' Reproduces the v2 "Leading vegetation by age class" boxplot for a single
@@ -203,7 +218,9 @@ plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
 #' @param type Plot style: `"ribbon"` (mean line + min--max ribbon) or
 #'   `"boxplot"` (box-and-whisker showing median and quartiles).
 #' @param facet Candidate faceting columns; those present and varying are combined
-#'   into the panel label (default `c("poly", "class", "metric", "metric.1")`).
+#'   into the panel label (default `c("rptPoly", "poly", "class", "metric",
+#'   "metric.1")`; `rptPoly` is the reporting polygon LAYER, `poly` the subregion
+#'   within it).
 #' @param ylab Y-axis label.
 #' @param title Optional plot title (e.g. the study area and metric name).
 #' @param ncol,nrow Panel grid per page when paginating (default `4` x `3`).
@@ -220,7 +237,7 @@ plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
 plot_nrv_envelope <- function(
   nrv_df,
   type = c("ribbon", "boxplot"),
-  facet = c("poly", "class", "metric", "metric.1"),
+  facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   ylab = "value",
   title = NULL,
   ncol = 4,
@@ -234,7 +251,7 @@ plot_nrv_envelope <- function(
   facet <- intersect(facet, names(nrv_df))
   facet <- facet[vapply(facet, function(cc) length(unique(nrv_df[[cc]])) > 1L, logical(1))]
   nrv_df[[".panel"]] <- if (length(facet)) {
-    do.call(paste, c(nrv_df[facet], sep = " | "))
+    .panel_factor(nrv_df, facet)
   } else {
     "all"
   }
@@ -322,7 +339,7 @@ plot_nrv_envelope <- function(
 #'   value is drawn as a red vertical reference line. `NULL` (default) omits it.
 #' @param value_col Name of the value column to bin (default `"value"`).
 #' @param facet Candidate faceting columns; those present and varying become the
-#'   panel label (default `c("poly", "class", "metric", "metric.1")`).
+#'   panel label (default `c("rptPoly", "poly", "class", "metric", "metric.1")`).
 #' @param bins Number of histogram bins (default `30`).
 #' @param xlab,ylab Axis labels.
 #'
@@ -335,7 +352,7 @@ plot_nrv_distribution <- function(
   x,
   cc = NULL,
   value_col = "value",
-  facet = c("poly", "class", "metric", "metric.1"),
+  facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   bins = 30,
   xlab = value_col,
   ylab = "Proportion in NRV"
@@ -346,8 +363,15 @@ plot_nrv_distribution <- function(
   }
   facetV <- intersect(facet, names(df))
   facetV <- facetV[vapply(facetV, function(cc) length(unique(df[[cc]])) > 1L, logical(1))]
-  panel <- function(d) if (length(facetV)) do.call(paste, c(d[facetV], sep = " | ")) else "all"
-  df[[".panel"]] <- panel(df)
+  df[[".panel"]] <- if (length(facetV)) .panel_factor(df, facetV) else "all"
+  ## the current-condition panel labels must live in the SAME factor levels as the histogram data,
+  ## otherwise the reference lines land in the wrong (or an extra) panel.
+  panel <- function(d) {
+    if (!length(facetV)) {
+      return("all")
+    }
+    factor(as.character(.panel_factor(d, facetV)), levels = levels(df[[".panel"]]))
+  }
 
   gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]])) +
     ggplot2::geom_histogram(

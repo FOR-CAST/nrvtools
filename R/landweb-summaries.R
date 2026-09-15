@@ -358,27 +358,20 @@ calculateLandWebMetrics <- function(summaryPolys, polyCol, vtm, age, funList = N
 
   stat_df <- lapply(stats, function(x) {
     x <- unlist(x, recursive = FALSE, use.names = TRUE)
-    labels <- purrr::transpose(strsplit(names(x), "[.]"))
-    labels1 <- unlist(labels[[1]])
-    labels2 <- gsub("vegTypeMap|standAgeMap|timeSinceFire", "", unlist(labels[[2]]))
-    labels2a <- purrr::transpose(strsplit(labels2, "_"))
-    labels2a2 <- unlist(labels2a[[2]]) ## year
-    labels2a3 <- if (length(labels2a) == 3) {
-      unlist(labels2a[[3]]) ## subpoly
-    } else if (length(labels2a) == 4) {
-      paste0(unlist(labels2a[[3]]), "_", unlist(labels2a[[4]])) ## subpoly w/ intersection
-    } else {
-      stop("polyName contains too many underscores")
-    }
-
-    reps <- as.integer(gsub("rep", "", labels1))
-    times <- as.integer(gsub("year", "", labels2a2))
-    polys <- labels2a3
+    ## Parse via the shared `_year<YYYY>_` marker (see .parse_metric_labels()), NOT by splitting on
+    ## "_" and transposing. purrr::transpose() requires every element to have the same number of
+    ## tokens, so a layer mixing 1-token and 2-token polygon names (e.g. the tenure layer's "ANC"
+    ## alongside "DawsonCreek_TSA") transposed to the wrong shape and recombined into the CARTESIAN
+    ## PRODUCT of the tokens: "ANC_Edson", "Canfor_GrandePr", ... 45 fabricated names in place of 11
+    ## real ones, with 6 tenures dropped entirely. The labels came out wrong but NON-BLANK and the
+    ## run completed, so nothing failed loudly. This is the same class of bug 0.2.10 fixed in
+    ## patchStats()/patchStatsSeral()/nrv_metrics_landscape(); this function was missed.
+    lbl <- .parse_metric_labels(names(x))
 
     do.call(
       rbind,
       lapply(seq_along(x), function(i) {
-        dplyr::mutate(x[[i]], rep = reps[i], time = times[i], poly = polys[i])
+        dplyr::mutate(x[[i]], rep = lbl$rep[i], time = lbl$time[i], poly = lbl$poly[i])
       })
     )
   })
