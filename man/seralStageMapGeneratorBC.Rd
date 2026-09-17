@@ -46,6 +46,8 @@ paste0("https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry
 paste0("https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/",
 "natural-resource-use/land-water-use/crown-land/land-use-plans-and-objectives/"
 "cariboo-region/cariboochilcotin-rlup/update_note_3.pdf")
+
+Reading \code{cd} requires the suggested package \pkg{qs2}.
 }
 \examples{
 \dontrun{
