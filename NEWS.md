@@ -1,3 +1,9 @@
+# nrvtools 0.3.3
+
+- `seralStageMapGeneratorBC()` (and so `writeSeralStageMapBC()`) no longer uses `SpaDES.tools`, which is dropped from Suggests and Remotes along with the `reproducible` stack it depends on. `SpaDES.tools::rasterizeReduced()` was its only use, and the function stopped when the package was absent, so in practice it had been a hard dependency. The seral stage raster is now built by an independent internal implementation. Checked against `SpaDES.tools::rasterizeReduced()` as an external reference, the output was identical for integer and float pixel group maps (in memory and read from disk), for integer, double and factor columns, and on a 4.7 million cell simulation snapshot, both in memory and after being written to disk.
+- `seralStageMapGeneratorBC()` now reads a categorical pixel group map by its active category labels, both when joining the cohort data and when building the seral stage raster. Previously both steps used the raw cell codes, so a categorical map's labels were ignored. Numeric labels are compared as numbers, so large ids are not missed through scientific notation (`"1e+05"`). Pixel group ids above 2^24 cannot be stored exactly in a float32 map, so such maps should use an integer type.
+- `seralStageMapGeneratorBC()` reports a missing `qs2` with an actionable message via `rlang::check_installed()`, instead of a bare `requireNamespace("qs2", quietly = TRUE) is not TRUE`.
+
 # nrvtools 0.3.2
 
 Mirrors corrections made to a sibling implementation of the same CEF section 3.2.2 protocol, which reruns found had invalidated a published analysis.

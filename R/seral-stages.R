@@ -52,6 +52,9 @@ utils::globalVariables(c(
 #'
 #' @return seral stage map (`SpatRaster`)
 #'
+#' @details
+#' Reading `cd` requires the suggested package \pkg{qs2}.
+#'
 #' @export
 #' @rdname seralStageMapGeneratorBC
 #'
@@ -62,10 +65,7 @@ utils::globalVariables(c(
 #' }
 #' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
-  stopifnot(
-    requireNamespace("qs2", quietly = TRUE),
-    requireNamespace("SpaDES.tools", quietly = TRUE)
-  )
+  rlang::check_installed("qs2", reason = "to read `cd`.")
 
   fndtbec <- ndtbec
   stopifnot(
@@ -87,7 +87,7 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   pgmByNdtbec <- data.table(
     pixelID = seq(terra::ncell(pixelGroupMap)),
-    pixelGroup = terra::values(pixelGroupMap, mat = FALSE),
+    pixelGroup = .pixelGroupKeys(pixelGroupMap, cohortData$pixelGroup),
     NDTBEC = ndtbec
   ) |>
     na.omit("pixelGroup")
@@ -98,7 +98,9 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
   nrows <- NROW(pgmByNdtbec)
   assertthat::assert_that(identical(nrows, length(unique(pgmByNdtbec$pixelID))))
 
-  pixelGroupMap2 <- terra::deepcopy(pixelGroupMap)
+  ## a PLAIN raster: a copy of a categorical map would keep its category table, through which the new
+  ## ids would then be read as the old labels
+  pixelGroupMap2 <- terra::rast(pixelGroupMap, nlyrs = 1L, vals = NA_real_)
   pixelGroupMap2[pgmByNdtbec$pixelID] <- pgmByNdtbec$newPixelGroup
 
   cohortData2 <- data.table::copy(cohortData)
@@ -359,16 +361,11 @@ seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
 
   assertthat::assert_that(NROW(cohortData2[!grepl("^NDT5_", NDTBEC) & is.na(SeralStage), ]) == 0)
 
-  ## SeralStage needs to be a factor for rasterizedReduced
+  ## SeralStage needs to be a factor for .paintPixelGroups()
   cohortData2[, SeralStage := factor(SeralStage, levels = .seralStagesBC)]
 
   ## build seral stage map raster from cohortData2 and pixelGroupMap2
-  ssm <- SpaDES.tools::rasterizeReduced(
-    cohortData2,
-    pixelGroupMap2,
-    "SeralStage",
-    mapcode = "newPixelGroup"
-  )
+  ssm <- .paintPixelGroups(cohortData2, pixelGroupMap2, "SeralStage", mapcode = "newPixelGroup")
 
   return(ssm)
 }
@@ -410,4 +407,42 @@ writeSeralStageMapBC <- function(
     future.packages = c("nrvtools", "terra")
   ) |>
     unname()
+}
+
+## Paint one column of a pixel-group-level table (e.g. cohort data) onto a pixel group map.
+##
+## Each cell takes the value from the FIRST row whose `mapcode` equals the cell's pixel group; cells
+## with no matching row are NA. The map may be integer, float or categorical: an integer or float map
+## is keyed by its cell values (pixel group ids above 2^24 are not exact in a float32 map), and a
+## categorical map by its ACTIVE labels. A factor column yields a categorical raster whose cell values
+## are the factor codes and whose category table (`id`, `values`) lists only the classes present, in
+## order of first appearance.
+.paintPixelGroups <- function(reduced, fullRaster, newRasterCol, mapcode) {
+  stopifnot(inherits(fullRaster, "SpatRaster"), length(newRasterCol) == 1L)
+
+  key <- .pixelGroupKeys(fullRaster, reduced[[mapcode]])
+  painted <- reduced[[newRasterCol]][match(key, reduced[[mapcode]])]
+
+  if (!is.factor(painted)) {
+    return(terra::rast(fullRaster, nlyrs = 1L, names = newRasterCol, vals = painted))
+  }
+
+  code <- as.integer(painted)
+  first <- which(!is.na(code) & !duplicated(code))
+  out <- terra::rast(fullRaster, nlyrs = 1L, names = newRasterCol, vals = code)
+  levels(out) <- data.frame(id = code[first], values = as.character(painted)[first])
+  out
+}
+
+## The pixel group of every cell of a pixel group map, in the type of the ids it is to be matched
+## against (`like`): the raw cell value, or for a categorical map its ACTIVE label. Labels are
+## converted rather than the ids, because as text a numeric id of 100000 is "1e+05".
+.pixelGroupKeys <- function(pixelGroupMap, like) {
+  key <- terra::values(pixelGroupMap, mat = FALSE)
+  if (!isTRUE(terra::is.factor(pixelGroupMap)[1])) {
+    return(key)
+  }
+  rat <- terra::cats(pixelGroupMap)[[1]]
+  label <- as.character(rat[[terra::activeCat(pixelGroupMap) + 1L]])[match(key, rat[[1]])]
+  if (is.numeric(like)) suppressWarnings(as.numeric(label)) else label
 }
