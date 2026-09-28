@@ -1,3 +1,18 @@
+# nrvtools 0.3.4
+
+## Bug fix
+
+`interiorForestSeral(method = "subgrid")` returned malformed rows -- NA `class`, `poly` and `value` -- for a reporting subregion that overlaps the map's extent but lies entirely over inactive (NA) cells. On a district-sized run this was 24 of 120 rows.
+
+Two faults, fixed where each lives:
+
+- `terra::zonal(..., na.rm = TRUE)` returns `NaN`, not `0`, for a zone with no non-NA cells. Such a subregion holds no forest, which is a count of zero rather than an unknown quantity, so non-finite zonal counts are now taken as zero.
+- The subregion filter used a bare logical (`areas[areas$total_ha > 0, ]`). `NaN > 0` is `NA`, and indexing rows with a logical containing `NA` silently *injects* an all-NA row rather than dropping it. The filter now uses `which()`, which cannot produce one.
+
+The `"vector"` backend never had this: its areas come from `sf::st_intersection()`, which gives 0 rather than NaN. Both backends are covered by the regression test, which is pinned against a fixture holding one active and one entirely-inactive subregion and was confirmed to fail before the fix.
+
+Reported values are unaffected wherever every reporting subregion contains active cells.
+
 # nrvtools 0.3.3
 
 - `seralStageMapGeneratorBC()` (and so `writeSeralStageMapBC()`) no longer uses `SpaDES.tools`, which is dropped from Suggests and Remotes along with the `reproducible` stack it depends on. `SpaDES.tools::rasterizeReduced()` was its only use, and the function stopped when the package was absent, so in practice it had been a hard dependency. The seral stage raster is now built by an independent internal implementation. Checked against `SpaDES.tools::rasterizeReduced()` as an external reference, the output was identical for integer and float pixel group maps (in memory and read from disk), for integer, double and factor columns, and on a 4.7 million cell simulation snapshot, both in memory and after being written to disk.

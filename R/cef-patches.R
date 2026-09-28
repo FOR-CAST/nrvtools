@@ -349,7 +349,11 @@ interiorForestSeral <- function(
     return(.empty_metrics())
   }
 
-  areas <- areas[areas$total_ha > 0, , drop = FALSE]
+  ## `which()`, not a bare logical: a non-finite total yields NA, and `areas[NA, ]` silently injects
+  ## an all-NA ROW instead of dropping it. That surfaced on a district-sized run as 24 of 120 rows
+  ## coming back with NA class, poly and value -- subregions that overlap the map's extent but lie
+  ## entirely over inactive cells. `which()` drops NA, so a malformed row cannot be constructed.
+  areas <- areas[which(areas$total_ha > 0), , drop = FALSE]
   if (!nrow(areas)) {
     return(.empty_metrics())
   }
@@ -456,7 +460,12 @@ interiorForestSeral <- function(
   labels <- as.character(summaryPolys[[polyCol]])
   count_by_zone <- function(mask) {
     z <- terra::zonal(terra::ifel(mask, 1L, 0L), zone, fun = "sum", na.rm = TRUE)
-    stats::setNames(as.numeric(z[[2L]]), as.character(z[[1L]]))
+    n <- as.numeric(z[[2L]])
+    ## A subregion lying entirely over inactive (NA) cells sums nothing, and terra returns NaN for it
+    ## rather than 0. Such a zone holds no forest, which is a count of zero, not an unknown -- and
+    ## left as NaN it propagates into the `total_ha > 0` filter below as a logical NA.
+    n[!is.finite(n)] <- 0
+    stats::setNames(n, as.character(z[[1L]]))
   }
   ## NOT `sub %in% codes[...]`: terra's `%in%` is not an S4 group generic, so with terra imported
   ## rather than attached it silently falls through to base::`%in%` and returns a plain logical

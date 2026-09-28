@@ -298,3 +298,80 @@ test_that("unclassified land is never counted as patch area or interior forest",
   ## and the NA band contributes no patches
   expect_false(any(is.na(patchAreaStatsSeral(r)$class)))
 })
+
+test_that("a subregion over inactive cells is dropped, not returned as an all-NA row", {
+  ## Regression: on a district-sized run, 24 of 120 interior-forest rows came back with NA class,
+  ## poly and value. Cause: a subregion overlapping the map's EXTENT but lying entirely over
+  ## inactive (NA) cells makes terra::zonal(na.rm = TRUE) return NaN for that zone; `NaN > 0` is NA;
+  ## and `areas[<logical with NA>, ]` injects an all-NA row instead of dropping it.
+  r <- terra::rast(
+    nrows = 40,
+    ncols = 60,
+    xmin = 0,
+    xmax = 60 * 120,
+    ymin = 0,
+    ymax = 40 * 120,
+    crs = "EPSG:3005"
+  )
+  terra::values(r) <- NA_integer_
+  r[1:40, 1:30] <- 5L ## active landscape: LEFT half only
+  r[10:29, 5:24] <- 20L ## an old block within it
+  levels(r) <- data.frame(value = c(5L, 20L), values = c("mid", "old"))
+
+  sq <- function(x0, y0, w) {
+    sf::st_polygon(list(cbind(c(x0, x0 + w, x0 + w, x0, x0), c(y0, y0, y0 + w, y0 + w, y0))))
+  }
+  polys <- sf::st_sf(
+    NDTBEC = c("active", "allNA"),
+    geom = sf::st_sfc(sq(700, 1300, 2200), sq(4400, 1300, 2200), crs = 3005)
+  )
+  ## both must overlap the extent, or the case under test does not arise
+  ext_sfc <- sf::st_as_sfc(sf::st_bbox(terra::ext(r), crs = sf::st_crs(3005)))
+  expect_true(all(lengths(sf::st_intersects(polys, ext_sfc)) > 0))
+
+  for (m in c("subgrid", "vector")) {
+    d <- interiorForestSeral(r, polys, "NDTBEC", method = m, subgrid_factor = 4L)
+    expect_false(anyNA(d$class), info = m)
+    expect_false(anyNA(d$poly), info = m)
+    expect_false(anyNA(d$value), info = m)
+    ## the all-inactive subregion contributes nothing; only the active one is reported
+    expect_setequal(unique(d$poly), "active")
+    expect_setequal(unique(d$class), c("mature_old", "old"))
+  }
+})
+
+test_that("an all-inactive zone counts as zero area, not NaN", {
+  ## pins the first half of the fix directly: the internal table must carry 0, never NaN
+  r <- terra::rast(
+    nrows = 20,
+    ncols = 40,
+    xmin = 0,
+    xmax = 40 * 120,
+    ymin = 0,
+    ymax = 20 * 120,
+    crs = "EPSG:3005"
+  )
+  terra::values(r) <- NA_integer_
+  r[1:20, 1:20] <- 4L ## old, left half only
+  levels(r) <- data.frame(value = 4L, values = "old")
+  sq <- function(x0, y0, w) {
+    sf::st_polygon(list(cbind(c(x0, x0 + w, x0 + w, x0, x0), c(y0, y0, y0 + w, y0 + w, y0))))
+  }
+  polys <- sf::st_sf(
+    NDTBEC = c("active", "allNA"),
+    geom = sf::st_sfc(sq(240, 240, 1200), sq(3000, 240, 1200), crs = 3005)
+  )
+  band <- terra::classify(r, rbind(c(4, 4)), others = NA)
+  raw <- .interior_subgrid(
+    band,
+    c(early_u20 = 0L, early_o20 = 1L, mid = 2L, mature = 3L, old = 4L),
+    list(mature_old = c("mature", "old"), old = "old"),
+    cef_patch_params(),
+    polys,
+    "NDTBEC",
+    4L
+  )
+  expect_false(any(is.nan(raw$total_ha)))
+  expect_false(any(is.nan(raw$interior_ha)))
+  expect_equal(raw$total_ha[raw$poly == "allNA"], rep(0, sum(raw$poly == "allNA")))
+})
