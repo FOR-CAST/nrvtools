@@ -169,6 +169,110 @@ plot_leading_boxplot <- function(
   gg
 }
 
+#' Leading-vegetation shares of the forest, by species and age class
+#'
+#' One figure per reporting subregion: a panel per age class (young to old, left
+#' to right) and, in each, a horizontal box per leading vegetation class of its
+#' across-replicate share of the subregion's forested area (the
+#' `"leadingShare"` metric of [leadingVegByAgeClass()]). Every box has the same
+#' denominator, so a class that leads on little of the forest has a small share,
+#' where its proportions by age class ([plot_leading_boxplot()]) swing between 0
+#' and 1. Current-condition shares are drawn as red dots.
+#'
+#' Classes are ordered by their mean simulated share, the largest at the top. A
+#' class that is 0 in every simulated and current-condition row is left out; one
+#' with current-condition values only keeps its row and its dots.
+#'
+#' @param df A `data.frame` of the raw per-replicate values for one subregion,
+#'   with age-class (`class_col`), vegetation-class (`species_col`) and share
+#'   (`value_col`) columns; one row per replicate x summary-year x age class x
+#'   vegetation class. A replicate-year in which a class leads nowhere should
+#'   hold a 0 rather than be missing.
+#' @param cc Optional `data.frame` of current-condition values (same columns as
+#'   `df`), drawn as red dots. `NULL` omits them.
+#' @param ageClasses Age-class labels in order young -> old (panel order).
+#' @param value_col,class_col,species_col Column names for the share, the age
+#'   class and the vegetation class.
+#' @param species_labels Optional named character vector of display labels,
+#'   named by vegetation-class code. Codes without a label are shown as they are.
+#' @param all_label The roll-up class left out of the figure, as it is not a
+#'   vegetation class of its own; `NULL` keeps every class.
+#' @param xlab,title,caption Axis label, plot title and caption.
+#'
+#' @return A `ggplot` object (`NULL` for empty input).
+#'
+#' @importFrom rlang .data
+#' @export
+#' @seealso [plot_leading_boxplot()], [leadingVegByAgeClass()]
+plot_leading_share <- function(
+  df,
+  cc = NULL,
+  ageClasses = c("Young", "Immature", "Mature", "Old"),
+  value_col = "value",
+  class_col = "class",
+  species_col = "metric.1",
+  species_labels = NULL,
+  all_label = "All species",
+  xlab = "Proportion of forested area",
+  title = NULL,
+  caption = NULL
+) {
+  if (is.null(df) || !nrow(df)) {
+    return(invisible(NULL))
+  }
+  if (!is.null(cc) && !nrow(cc)) {
+    cc <- NULL
+  }
+  if (!is.null(all_label)) {
+    df <- df[df[[species_col]] != all_label, , drop = FALSE]
+    if (!is.null(cc)) cc <- cc[cc[[species_col]] != all_label, , drop = FALSE]
+  }
+
+  ## classes that lead somewhere, ordered by mean simulated share (the largest drawn at the top)
+  leads <- function(d) unique(d[[species_col]][!is.na(d[[value_col]]) & d[[value_col]] != 0])
+  keep <- union(leads(df), if (!is.null(cc)) leads(cc))
+  if (!length(keep)) {
+    return(invisible(NULL))
+  }
+  mn <- tapply(df[[value_col]], df[[species_col]], mean, na.rm = TRUE)[keep]
+  mn[is.na(mn)] <- 0
+  lev <- keep[order(mn, method = "radix")]
+  lab <- lev
+  if (!is.null(species_labels)) {
+    hit <- lev %in% names(species_labels)
+    lab[hit] <- species_labels[lev[hit]]
+  }
+
+  df <- df[df[[species_col]] %in% lev, , drop = FALSE]
+  df[[species_col]] <- factor(df[[species_col]], levels = lev)
+  df[[class_col]] <- factor(df[[class_col]], levels = ageClasses)
+  gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]], y = .data[[species_col]])) +
+    ggplot2::geom_boxplot(fill = "limegreen", outlier.size = 0.8, orientation = "y") +
+    ggplot2::facet_wrap(ggplot2::vars(.data[[class_col]]), nrow = 1, drop = FALSE) +
+    ggplot2::scale_x_continuous(
+      breaks = seq(0, 1, 0.25),
+      labels = c("0", "0.25", "0.5", "0.75", "1")
+    ) +
+    ggplot2::scale_y_discrete(labels = stats::setNames(lab, lev), drop = FALSE) +
+    ggplot2::coord_cartesian(xlim = c(0, 1)) +
+    ggplot2::labs(x = xlab, y = NULL, title = title, caption = caption) +
+    ggplot2::theme_bw()
+
+  if (!is.null(cc)) {
+    cc <- cc[cc[[species_col]] %in% lev, , drop = FALSE]
+    cc[[species_col]] <- factor(cc[[species_col]], levels = lev)
+    cc[[class_col]] <- factor(cc[[class_col]], levels = ageClasses)
+    gg <- gg +
+      ggplot2::geom_point(
+        data = cc,
+        ggplot2::aes(x = .data[[value_col]], y = .data[[species_col]]),
+        colour = "red",
+        size = 3
+      )
+  }
+  gg
+}
+
 #' Large-patch age-class histogram (v2 LandWeb_summary form, one file per species)
 #'
 #' Reproduces the v2 "LargePatches" histogram for a single reporting unit

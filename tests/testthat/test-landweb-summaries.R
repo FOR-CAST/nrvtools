@@ -43,12 +43,37 @@ test_that("leadingVegByAgeClass returns the raw schema, zero-filled, proportions
   expect_named(out, c("layer", "level", "class", "id", "metric", "value", "metric.1"))
   expect_setequal(out$class, acl) ## zero-filled across every age class
   expect_true("All species" %in% out$metric.1)
+  expect_setequal(out$metric, c("leadingProp", "leadingShare"))
   ## all pixels Young/Pinu -> proportion 1 for (Young, Pinu_sp), 0 elsewhere for Pinu
-  expect_equal(out$value[out$class == "Young" & out$metric.1 == "Pinu_sp"], 1)
-  expect_equal(out$value[out$class == "Immature" & out$metric.1 == "Pinu_sp"], 0)
+  lead <- out[out$metric == "leadingProp", ]
+  expect_equal(lead$value[lead$class == "Young" & lead$metric.1 == "Pinu_sp"], 1)
+  expect_equal(lead$value[lead$class == "Immature" & lead$metric.1 == "Pinu_sp"], 0)
   ## proportions within each present species sum to 1
-  present <- stats::aggregate(value ~ metric.1, out, sum)
+  present <- stats::aggregate(value ~ metric.1, out[out$metric == "leadingProp", ], sum)
   expect_equal(present$value[present$metric.1 == "All species"], 1)
+})
+
+test_that("leadingVegByAgeClass reports each species x age class as a share of the forest", {
+  ## by row: Pinu, Pinu, Pinu, Popu, non-forest
+  codes <- matrix(c(rep(1L, 15), rep(2L, 5), rep(0L, 5)), 5, 5, byrow = TRUE)
+  vtm <- mk_cat(codes, vtm_rat)
+  age <- mk_age(codes, 10)
+  terra::values(age) <- rep(c(130, 10, 10, 50, 10), each = 5) ## by row: Old, Young, Young, Immature
+  out <- leadingVegByAgeClass(vtm, age, ageClassCutOffs = aco, ageClasses = acl)
+
+  share <- out[out$metric == "leadingShare", ]
+  val <- function(d, ac, sp) d$value[d$class == ac & d$metric.1 == sp]
+  expect_equal(nrow(share), length(acl) * 3L) ## Pinu_sp, Popu_sp, All species
+  expect_equal(val(share, "Old", "Pinu_sp"), 5 / 20) ## 20 forested cells
+  expect_equal(val(share, "Young", "Pinu_sp"), 10 / 20)
+  expect_equal(val(share, "Immature", "Popu_sp"), 5 / 20)
+  expect_equal(val(share, "Mature", "Pinu_sp"), 0)
+  expect_equal(sum(share$value[share$metric.1 != "All species"]), 1)
+  expect_equal(val(out[out$metric == "leadingProp", ], "Old", "Pinu_sp"), round(5 / 15, 4))
+  ## the All-species share of each age class is its proportion of the forest
+  lead <- out[out$metric == "leadingProp" & out$metric.1 == "All species", ]
+  allShare <- share[share$metric.1 == "All species", ]
+  expect_equal(allShare$value[match(lead$class, allShare$class)], lead$value)
 })
 
 test_that("largePatchCounts counts contiguous patches and their area", {

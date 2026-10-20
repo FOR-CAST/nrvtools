@@ -435,3 +435,59 @@ test_that("plot_by_class draws every panel at once without a page", {
 test_that("plot_by_class errors on a missing column", {
   expect_snapshot(plot_by_class(new_replicate_values()), error = TRUE)
 })
+
+## per-replicate shares of the forest for one subregion: Pine large, Decid small, Fir never leads
+new_leading_shares <- function() {
+  ac <- c("Young", "Immature", "Mature", "Old")
+  d <- expand.grid(
+    rep = 1:5,
+    class = ac,
+    metric.1 = c("Pine", "Decid", "Fir", "All species"),
+    stringsAsFactors = FALSE
+  )
+  d$value <- ifelse(d$metric.1 == "Pine", 0.2, ifelse(d$metric.1 == "Decid", 0.05, 0)) + d$rep / 100
+  d$value[d$metric.1 == "Fir"] <- 0
+  d$value[d$metric.1 == "All species"] <- 0.25
+  d$metric <- "leadingShare"
+  d
+}
+
+test_that("plot_leading_share draws a box per species in each age-class panel", {
+  p <- plot_leading_share(new_leading_shares())
+  b <- ggplot2::ggplot_build(p)
+  ## Fir never leads and All species is not a species; the largest share is drawn at the top
+  expect_equal(levels(p$data$metric.1), c("Decid", "Pine"))
+  expect_equal(levels(b$layout$layout$class), c("Young", "Immature", "Mature", "Old"))
+  expect_equal(b$layout$panel_params[[1]]$x.range, c(-0.05, 1.05)) ## 0-1, whatever the data
+  expect_null(plot_leading_share(new_leading_shares()[0, ]))
+})
+
+test_that("plot_leading_share draws current conditions, keeping species only they show", {
+  cc <- data.frame(
+    class = c("Old", "Old", "Young"),
+    metric.1 = c("Pine", "Fir", "All species"),
+    value = c(0.3, 0.01, 0.5)
+  )
+  p <- plot_leading_share(new_leading_shares(), cc = cc)
+  pts <- geom_data(p, "GeomPoint")
+  expect_equal(levels(p$data$metric.1), c("Fir", "Decid", "Pine"))
+  expect_equal(as.character(pts$metric.1), c("Pine", "Fir"))
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_leading_share labels species and takes a title and caption", {
+  p <- plot_leading_share(
+    new_leading_shares(),
+    species_labels = c(Pine = "Pine", Decid = "Deciduous"),
+    title = "Zone 1",
+    caption = "Total forested area: 10 ha"
+  )
+  b <- ggplot2::ggplot_build(p)
+  expect_equal(
+    b$layout$panel_params[[1]]$y$get_labels(),
+    c("Deciduous", "Pine"),
+    ignore_attr = TRUE
+  )
+  expect_equal(b$plot$labels$title, "Zone 1")
+  expect_equal(b$plot$labels$caption, "Total forested area: 10 ha")
+})

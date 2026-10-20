@@ -21,8 +21,9 @@ as \code{ageClasses}), e.g. \code{c(0, 40, 80, 120)}.}
 }
 \value{
 a raw long \code{data.frame} with columns \code{layer}, \code{level}, \code{class} (the age
-class), \code{id}, \code{metric} (\code{"leadingProp"}), \code{metric.1} (the vegetation class,
-incl. \code{"All species"}) and \code{value} (the proportion).
+class), \code{id}, \code{metric} (\code{"leadingProp"} or \code{"leadingShare"}), \code{metric.1} (the
+vegetation class, incl. \code{"All species"}) and \code{value} (the proportion of the
+class's pixels, rounded to 4 decimals, or the share of the forested pixels).
 }
 \description{
 Ports the v2 \code{LandWebUtils::LeadingVegTypeByAgeClass()} analysis onto the
@@ -33,6 +34,13 @@ class's pixels falling in each age class (plus an \code{"All species"} roll-up o
 all classes), zero-filling every age-class x vegetation-class combination.
 }
 \details{
+It also reports each vegetation class x age class as a share of the forested
+area (\code{"leadingShare"}): its pixels divided by all forested pixels. Unlike
+\code{"leadingProp"}, every class shares one denominator, so a class that leads on
+a few pixels has a small share rather than proportions that swing between 0
+and 1. Within a map the shares of all classes and age classes sum to 1, and
+the \code{"All species"} share of an age class is its proportion of the forest.
+
 The vegetation-type map already encodes the leading species per pixel (produced
 upstream by \code{LandR::vegTypeMapGenerator()} with \code{vegLeadingProportion}), so this
 function does not recompute "leading".

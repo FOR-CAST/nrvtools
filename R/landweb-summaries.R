@@ -1,5 +1,5 @@
 utils::globalVariables(c(
-  ":=", ".N", "N", "NPixels", "ageClass", "vegCover", "sizeInHa", "catKey", "proportion"
+  ":=", ".N", "N", "NPixels", "ageClass", "vegCover", "sizeInHa", "catKey", "proportion", "share"
 ))
 
 ## The label column of a terra categorical RAT (`terra::levels(r)[[1]]`): the column holding the
@@ -58,6 +58,13 @@ utils::globalVariables(c(
 #' class's pixels falling in each age class (plus an `"All species"` roll-up over
 #' all classes), zero-filling every age-class x vegetation-class combination.
 #'
+#' It also reports each vegetation class x age class as a share of the forested
+#' area (`"leadingShare"`): its pixels divided by all forested pixels. Unlike
+#' `"leadingProp"`, every class shares one denominator, so a class that leads on
+#' a few pixels has a small share rather than proportions that swing between 0
+#' and 1. Within a map the shares of all classes and age classes sum to 1, and
+#' the `"All species"` share of an age class is its proportion of the forest.
+#'
 #' The vegetation-type map already encodes the leading species per pixel (produced
 #' upstream by `LandR::vegTypeMapGenerator()` with `vegLeadingProportion`), so this
 #' function does not recompute "leading".
@@ -73,8 +80,9 @@ utils::globalVariables(c(
 #'   `c("Young", "Immature", "Mature", "Old")`.
 #'
 #' @return a raw long `data.frame` with columns `layer`, `level`, `class` (the age
-#'   class), `id`, `metric` (`"leadingProp"`), `metric.1` (the vegetation class,
-#'   incl. `"All species"`) and `value` (the proportion).
+#'   class), `id`, `metric` (`"leadingProp"` or `"leadingShare"`), `metric.1` (the
+#'   vegetation class, incl. `"All species"`) and `value` (the proportion of the
+#'   class's pixels, rounded to 4 decimals, or the share of the forested pixels).
 #'
 #' @export
 #' @seealso [largePatchCounts()], [calculateLandWebMetrics()]
@@ -103,23 +111,29 @@ leadingVegByAgeClass <- function(vtm, age, ageClassCutOffs, ageClasses) {
 
   tab <- data.table::rbindlist(list(tab, tab2), use.names = TRUE, fill = TRUE)
 
+  ## share of the forested pixels, one denominator for every class
+  tab[, share := NPixels / nrow(bb)]
+
   ## zero-fill every ageClass x vegCover combination
   vegClasses <- unique(c(as.character(bb$vegCover), "All species"))
   allCombos <- data.table::CJ(ageClass = ageClasses, vegCover = vegClasses, unique = TRUE)
   tab <- tab[allCombos, on = c("ageClass", "vegCover")]
-  tab[is.na(proportion), proportion := 0]
+  tab[is.na(proportion), `:=`(proportion = 0, share = 0)]
 
-  out <- data.frame(
-    layer = 1L,
-    level = "landscape",
-    class = as.character(tab$ageClass),
-    id = NA_integer_,
-    metric = "leadingProp",
-    value = tab$proportion,
-    stringsAsFactors = FALSE
-  )
-  out[["metric.1"]] <- as.character(tab$vegCover)
-  out
+  rows <- function(metric, value) {
+    out <- data.frame(
+      layer = 1L,
+      level = "landscape",
+      class = as.character(tab$ageClass),
+      id = NA_integer_,
+      metric = metric,
+      value = value,
+      stringsAsFactors = FALSE
+    )
+    out[["metric.1"]] <- as.character(tab$vegCover)
+    out
+  }
+  rbind(rows("leadingProp", tab$proportion), rows("leadingShare", tab$share))
 }
 
 #' Count of large patches by size class, vegetation class and age class
