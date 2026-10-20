@@ -53,8 +53,10 @@ utils::globalVariables(c(
 ## than only on the faceting columns that vary, so a current-condition table spanning other
 ## subregions or metrics contributes just the rows for the units `df` plots. A `cc` row matching no
 ## plotted unit is dropped, and when `cc` shares none of `keys` its value applies to every panel.
-## Several rows for one panel (and `by` value) are averaged; NA values are dropped. Returns `NULL`
-## when nothing is left to draw, else a data.frame of `.panel`, `by` and the value as `.cc`.
+## NA values are dropped. Two cases warn, as they usually mean `cc` is not labelled like `df`: no
+## row matches any panel (nothing is drawn), and several rows fall in one panel (and `by` value),
+## which are then averaged. Returns `NULL` when nothing is left to draw, else a data.frame of
+## `.panel`, `by` and the value as `.cc`.
 .cc_by_panel <- function(cc, df, keys, cc_col, by = NULL) {
   cc <- as.data.frame(cc)
   absent <- setdiff(c(cc_col, by), names(cc))
@@ -75,11 +77,30 @@ utils::globalVariables(c(
   }
   panels <- as_chr(unique(df[c(on, ".panel")]))
   m <- merge(as_chr(cc[c(on, by, cc_col)]), panels, by = on)
+  if (!nrow(m)) {
+    warning(
+      "no current-condition row matches a plotted unit",
+      if (length(on)) paste0(" on ", paste(on, collapse = ", ")),
+      "; none is drawn. Check that `cc` labels its units as the plotted data does.",
+      call. = FALSE
+    )
+    return(NULL)
+  }
   m <- m[!is.na(m[[cc_col]]), , drop = FALSE]
   if (!nrow(m)) {
     return(NULL)
   }
   grp <- c(".panel", by)
+  n <- stats::aggregate(m[cc_col], by = m[grp], FUN = length)[[cc_col]]
+  if (any(n > 1L)) {
+    warning(
+      sum(n > 1L),
+      " current-condition value(s) are each the mean of several `cc` rows in one panel",
+      if (length(by)) paste0(" and ", by),
+      ". Give `cc` the columns that tell those rows apart, or one row per panel.",
+      call. = FALSE
+    )
+  }
   out <- stats::aggregate(m[cc_col], by = m[grp], FUN = mean)
   names(out)[names(out) == cc_col] <- ".cc"
   out[[".panel"]] <- if (is.factor(df[[".panel"]])) {
@@ -166,6 +187,7 @@ plot_leading_boxplot <- function(
 #' @param value_col,class_col Column names for the count and age class.
 #' @param bins Number of histogram bins (default `30`).
 #' @param xlab,title Axis label and plot title.
+#' @param caption Optional caption below the figure. `NULL` (default) omits it.
 #'
 #' @return A `ggplot` object (`NULL` for empty input).
 #'
@@ -180,7 +202,8 @@ plot_largepatch_histogram <- function(
   class_col = "class",
   bins = 30,
   xlab = "Number of patches",
-  title = NULL
+  title = NULL,
+  caption = NULL
 ) {
   if (is.null(df) || !nrow(df)) {
     return(invisible(NULL))
@@ -194,7 +217,7 @@ plot_largepatch_histogram <- function(
       fill = "grey70"
     ) +
     ggplot2::facet_wrap(ggplot2::vars(.data[[class_col]]), ncol = 2, drop = FALSE) +
-    ggplot2::labs(x = xlab, y = "Proportion in NRV", title = title) +
+    ggplot2::labs(x = xlab, y = "Proportion in NRV", title = title, caption = caption) +
     ggplot2::theme_bw()
 
   if (!is.null(cc) && nrow(cc)) {
@@ -220,32 +243,38 @@ plot_largepatch_histogram <- function(
 #'
 #' @param page integer, specifying the `facet_wrap_paginate` page to plot.
 #'
+#' @param xlab character, the label for the x-axis (default `"time"`).
+#'
+#' @param caption Optional caption below the figure. `NULL` (default) omits it.
+#'
 #' @return ggplot object; invoked for side effect of plotting
 #'
 #' @export
 #' @rdname plot_by
-plot_over_time <- function(summary_df, ylabel, page = 1) {
+plot_over_time <- function(summary_df, ylabel, page = 1, xlab = "time", caption = NULL) {
   ggplot(summary_df, aes(x = time, y = mean)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     geom_point() +
     geom_line() +
     geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.5) +
+    ggplot2::scale_y_continuous(labels = scales::label_comma()) +
     theme_bw() +
     theme(legend.position = "none") +
-    ylab(ylabel)
+    ggplot2::labs(x = xlab, y = ylabel, caption = caption)
 }
 
 #' @export
 #' @rdname plot_by
-plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
+plot_over_time_by_class <- function(summary_df, ylabel, page = 1, xlab = "time", caption = NULL) {
   ggplot(summary_df, aes(x = time, y = mean, col = class)) +
     ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
     geom_point() +
     geom_line() +
     geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.5) +
+    ggplot2::scale_y_continuous(labels = scales::label_comma()) +
     theme_bw() +
     theme(legend.position = "bottom") +
-    ylab(ylabel)
+    ggplot2::labs(x = xlab, y = ylabel, caption = caption)
 }
 
 #' Distribution of a metric by class, one panel per reporting unit
@@ -262,13 +291,20 @@ plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
 #' Current-condition values passed as `cc` are drawn as red points, one per
 #' class and panel, so each class's current value can be read against its
 #' simulated range. A class that has a current-condition value but no simulated
-#' value in a panel keeps its point, which then stands without a box: the
-#' simulation never produced that class there.
+#' value in a panel keeps its point, which then stands without a box: either the
+#' simulation never produced that class there, or the metric is undefined
+#' (not finite) in every replicate and year where it did.
+#'
+#' The panels and the classes on the x axis come from every row of
+#' `summary_df`, before rows whose value is not finite are dropped, so a
+#' subregion or class whose values are all undefined keeps its empty panel or
+#' axis position, and the page count matches the input's subregions.
 #'
 #' @param summary_df A `data.frame` with a class column (`class_col`), a value
 #'   column (`value_col`) and the faceting column(s). Rows whose value is not
 #'   finite -- an undefined metric, such as the standard deviation of a single
-#'   patch -- are dropped. `NULL`, or no finite value, returns `NULL`.
+#'   patch -- are dropped, with a message giving their number. `NULL`, or no
+#'   finite value, returns `NULL`.
 #' @param type Plot style: `"box"` (box-and-whisker) or `"violin"`.
 #' @param page Page to render (default `1`) via
 #'   [ggforce::facet_wrap_paginate()]; use [ggforce::n_pages()] on the `page = 1`
@@ -278,22 +314,29 @@ plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
 #'   a value column (see `cc_col`) and the unit columns (`poly`, `metric`, ...)
 #'   that match its rows to the panels, e.g. [nrv_replicate_values()] of the
 #'   current-condition snapshot. A row for a unit that is not plotted is
-#'   dropped. `NULL` (default) draws none.
+#'   dropped. A warning says when no row matches a panel, or when several rows
+#'   fall in one panel and class (their mean is drawn). `NULL` (default) draws
+#'   none.
 #' @param value_col Name of the value column of `summary_df` (default `"mean"`).
 #' @param class_col Name of the class column, on the x axis (default `"class"`).
 #' @param facet Faceting column(s); those present are combined into the panel
-#'   label (default `"poly"`, one panel per subregion).
+#'   label (default `"poly"`, one panel per subregion). A single column is
+#'   faceted on directly, so a layer added to the result with its own data and
+#'   that column lands in the matching panel.
 #' @param ncol,nrow Panel grid per page (default `4` x `3`).
 #' @param scales Facet scales: `"fixed"` (default) shares the y axis across
 #'   panels; `"free_y"` scales each panel to its own values.
 #' @param xlab,ylab Axis labels. `NULL` (default) uses `class_col`, and the
-#'   `metric` name(s) in `summary_df` (else `value_col`).
+#'   `metric` name(s) in `summary_df` (without a `metric` column, no y title).
 #' @param title Optional plot title.
 #' @param cc_col Column of `cc` holding the current-condition value. `NULL`
 #'   (default) uses `value_col` if `cc` has it, else `"mean"`, else `"value"`.
 #' @param cc_label Legend label for the current-condition points.
+#' @param caption Optional caption below the figure, e.g. what the boxes
+#'   summarise. `NULL` (default) omits it.
 #'
-#' @return A `ggplot` object, or `NULL` for empty input.
+#' @return A `ggplot` object, or `NULL` for empty input. The y axis labels use
+#'   thousands separators.
 #'
 #' @importFrom rlang .data
 #' @export
@@ -314,7 +357,8 @@ plot_by_class <- function(
   ylab = NULL,
   title = NULL,
   cc_col = NULL,
-  cc_label = "current condition"
+  cc_label = "current condition",
+  caption = NULL
 ) {
   type <- match.arg(type)
   if (is.null(summary_df) || !nrow(summary_df)) {
@@ -329,12 +373,18 @@ plot_by_class <- function(
       call. = FALSE
     )
   }
-  summary_df <- summary_df[is.finite(summary_df[[value_col]]), , drop = FALSE]
-  if (!nrow(summary_df)) {
-    return(invisible(NULL))
-  }
+  ## Panels, classes and the y title come from every row, as in 0.3.4, where ggplot2 dropped the
+  ## rows that are not finite only when drawing; the current-condition points match those panels.
   facet <- intersect(facet, names(summary_df))
   summary_df[[".panel"]] <- if (length(facet)) .panel_factor(summary_df, facet) else "all"
+  cls <- summary_df[[class_col]]
+  lev <- if (is.factor(cls)) levels(droplevels(cls)) else sort(unique(as.character(cls)))
+  if (is.null(xlab)) {
+    xlab <- class_col
+  }
+  if (is.null(ylab) && "metric" %in% names(summary_df)) {
+    ylab <- paste(unique(summary_df[["metric"]]), collapse = ", ")
+  }
 
   ccdf <- NULL
   if (!is.null(cc) && NROW(cc)) {
@@ -347,15 +397,32 @@ plot_by_class <- function(
     )
   }
 
+  ok <- is.finite(summary_df[[value_col]])
+  if (!any(ok)) {
+    return(invisible(NULL))
+  }
+  if (!all(ok)) {
+    message("plot_by_class(): dropped ", sum(!ok), " row(s) whose `", value_col, "` is not finite")
+    summary_df <- summary_df[ok, , drop = FALSE]
+  }
+
   ## one set of class levels for both layers: the data's own order (a factor keeps its levels,
   ## anything else sorts), then any class that only the current condition has.
-  cls <- summary_df[[class_col]]
-  lev <- if (is.factor(cls)) levels(cls) else sort(unique(as.character(cls)))
   if (!is.null(ccdf)) {
     lev <- c(lev, setdiff(unique(as.character(ccdf[[class_col]])), lev))
     ccdf[[class_col]] <- factor(as.character(ccdf[[class_col]]), levels = lev)
   }
-  summary_df[[class_col]] <- factor(as.character(cls), levels = lev)
+  summary_df[[class_col]] <- factor(as.character(summary_df[[class_col]]), levels = lev)
+
+  ## a single faceting column is faceted on directly, as in 0.3.4, so that a layer added with its own
+  ## data lands in its own panel instead of in every one; several share the combined `.panel` label
+  fcol <- if (length(facet) == 1L) facet else ".panel"
+  if (length(facet) == 1L) {
+    summary_df[[fcol]] <- summary_df[[".panel"]]
+    if (!is.null(ccdf)) {
+      ccdf[[fcol]] <- ccdf[[".panel"]]
+    }
+  }
 
   gg <- ggplot2::ggplot(summary_df, ggplot2::aes(x = .data[[class_col]], y = .data[[value_col]])) +
     switch(
@@ -376,34 +443,32 @@ plot_by_class <- function(
       ggplot2::scale_colour_manual(values = stats::setNames("red", cc_label), name = NULL)
   }
 
+  ## drop = FALSE keeps the panels of subregions whose rows were all dropped above
   facet_layer <- if (!length(facet)) {
     NULL
   } else if (is.null(page)) {
-    ggplot2::facet_wrap(stats::as.formula("~ .panel"), ncol = ncol, scales = scales)
+    ggplot2::facet_wrap(
+      ggplot2::vars(!!rlang::sym(fcol)),
+      ncol = ncol,
+      scales = scales,
+      drop = FALSE
+    )
   } else {
     ggforce::facet_wrap_paginate(
-      stats::as.formula("~ .panel"),
+      ggplot2::vars(!!rlang::sym(fcol)),
       ncol = ncol,
       nrow = nrow,
       page = page,
-      scales = scales
+      scales = scales,
+      drop = FALSE
     )
-  }
-  if (is.null(xlab)) {
-    xlab <- class_col
-  }
-  if (is.null(ylab)) {
-    ylab <- if ("metric" %in% names(summary_df)) {
-      paste(unique(summary_df[["metric"]]), collapse = ", ")
-    } else {
-      value_col
-    }
   }
 
   gg <- gg +
     facet_layer +
-    ggplot2::scale_x_discrete(guide = ggplot2::guide_axis(angle = 90)) +
-    ggplot2::labs(x = xlab, y = ylab, title = title) +
+    ggplot2::scale_x_discrete(guide = ggplot2::guide_axis(angle = 90), drop = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::label_comma()) +
+    ggplot2::labs(x = xlab, y = ylab, title = title, caption = caption) +
     ggplot2::theme_bw() +
     ggplot2::theme(strip.text.x = ggplot2::element_text(size = 14))
   if (!is.null(ccdf)) {
@@ -428,9 +493,9 @@ plot_by_class <- function(
 #' overlay ambiguously within a panel; a constant column is dropped from the panel
 #' label, and trivial data collapses to a single panel.
 #'
-#' Current-condition values passed as `cc` are drawn in each panel as a red
-#' dashed horizontal line, so the simulated range can be read against today's
-#' value; a legend labels the line.
+#' Current-condition values passed as `cc` are drawn as a red dashed horizontal
+#' line in each panel where `cc` has a value, so the simulated range can be read
+#' against today's value; a legend labels the line.
 #'
 #' @param nrv_df A range-of-variation envelope `data.frame` from
 #'   [summarize_nrv()]. `type = "ribbon"` needs `time`, `mean`, `min`, `max`;
@@ -444,28 +509,39 @@ plot_by_class <- function(
 #'   within it).
 #' @param ylab Y-axis label.
 #' @param title Optional plot title (e.g. the study area and metric name).
-#' @param ncol,nrow Panel grid per page when paginating (default `4` x `3`).
+#' @param ncol,nrow Panel grid. With `page`, the grid of each page; `NULL`
+#'   (default) is `4` x `3`. Without `page`, passed to [ggplot2::facet_wrap()],
+#'   where `NULL` lets it choose.
 #' @param page Page to render. `NULL` (default) draws every panel in one figure
 #'   via [ggplot2::facet_wrap()]; an integer paginates the panels across pages via
 #'   [ggforce::facet_wrap_paginate()] so a large panel set is split into multiple
 #'   figures. Use [ggforce::n_pages()] on the `page = 1` result to get the page
 #'   count, then loop `page` to write one file per page.
 #' @param cc Optional current-condition values: typically the [summarize_nrv()]
-#'   envelope of the current-condition snapshot (a single replicate, so its
-#'   `mean` and `median` both equal the value), or a raw table with a `value`
-#'   column. Rows are matched to panels on the unit columns (`poly`, `class`,
-#'   `metric`, ...) that `cc` and `nrv_df` share, so `cc` may span more units
-#'   than `nrv_df` plots. A row for a unit that `nrv_df` does not plot is
-#'   dropped, so no panel is added for it, and a panel with no matching row draws
-#'   no line. Several rows for one panel are averaged. `NULL` (default) draws
-#'   none.
+#'   envelope of the current-condition snapshot, or a table with a `value`
+#'   column. A class- or landscape-level metric has one value per unit in the
+#'   snapshot, so that envelope's `mean` and `median` both equal it. A
+#'   patch-level metric has one value per patch, and the snapshot's patch mean
+#'   and median can differ many times over; summarise [nrv_replicate_values()]
+#'   of the snapshot instead, to get one value per unit (the mean over its
+#'   patches) as for the replicates. Rows are matched to panels on the unit
+#'   columns (`poly`, `class`, `metric`, ...) that `cc` and `nrv_df` share, so
+#'   `cc` may span more units than `nrv_df` plots. A row for a unit that `nrv_df`
+#'   does not plot is dropped, so no panel is added for it, and a panel with no
+#'   matching row draws no line. A warning says when no row matches a panel, or
+#'   when several rows fall in one panel (their mean is drawn). `NULL` (default)
+#'   draws none.
 #' @param cc_col Column of `cc` holding the current-condition value. `NULL`
 #'   (default) compares like with like: `"mean"` (the ribbon's line) for
-#'   `type = "ribbon"`, `"median"` (the box's middle line) for
-#'   `type = "boxplot"`, falling back to `"value"`.
+#'   `type = "ribbon"`, falling back to `"value"`; `"median"` (the box's middle
+#'   line) for `type = "boxplot"`, falling back to `"value"`, then `"mean"`.
 #' @param cc_label Legend label for the current-condition line.
+#' @param xlab X-axis label (default `"time"`).
+#' @param caption Optional caption below the figure, e.g. what the band or
+#'   boxes summarise. `NULL` (default) omits it.
 #'
-#' @return A `ggplot` object, or `NULL` for empty input.
+#' @return A `ggplot` object, or `NULL` for empty input. The y axis labels use
+#'   thousands separators.
 #'
 #' @importFrom rlang .data
 #' @export
@@ -476,12 +552,14 @@ plot_nrv_envelope <- function(
   facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   ylab = "value",
   title = NULL,
-  ncol = 4,
-  nrow = 3,
+  ncol = NULL,
+  nrow = NULL,
   page = NULL,
   cc = NULL,
   cc_col = NULL,
-  cc_label = "current condition"
+  cc_label = "current condition",
+  xlab = "time",
+  caption = NULL
 ) {
   type <- match.arg(type)
   if (is.null(nrv_df) || !nrow(nrv_df)) {
@@ -533,7 +611,11 @@ plot_nrv_envelope <- function(
       cc,
       nrv_df,
       keys = union(.nrv_unit_cols, facet),
-      cc_col = .cc_value_col(cc, cc_col, c(if (type == "boxplot") "median" else "mean", "value"))
+      cc_col = .cc_value_col(
+        cc,
+        cc_col,
+        if (type == "boxplot") c("median", "value", "mean") else c("mean", "value")
+      )
     )
   }
   if (!is.null(ccPanel)) {
@@ -557,18 +639,22 @@ plot_nrv_envelope <- function(
   facet_layer <- if (!length(facet)) {
     NULL
   } else if (is.null(page)) {
-    ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free_y")
+    ggplot2::facet_wrap(stats::as.formula("~ .panel"), ncol = ncol, nrow = nrow, scales = "free_y")
   } else {
     ggforce::facet_wrap_paginate(
       stats::as.formula("~ .panel"),
-      ncol = ncol,
-      nrow = nrow,
+      ncol = if (is.null(ncol)) 4L else ncol,
+      nrow = if (is.null(nrow)) 3L else nrow,
       page = page,
       scales = "free_y"
     )
   }
 
-  gg <- gg + facet_layer + ggplot2::labs(x = "time", y = ylab, title = title) + ggplot2::theme_bw()
+  gg <- gg +
+    facet_layer +
+    ggplot2::scale_y_continuous(labels = scales::label_comma()) +
+    ggplot2::labs(x = xlab, y = ylab, title = title, caption = caption) +
+    ggplot2::theme_bw()
   if (!is.null(ccPanel)) {
     gg <- gg + ggplot2::theme(legend.position = "bottom")
   }
@@ -610,6 +696,7 @@ plot_nrv_envelope <- function(
 #'   panel label (default `c("rptPoly", "poly", "class", "metric", "metric.1")`).
 #' @param bins Number of histogram bins (default `30`).
 #' @param xlab,ylab Axis labels.
+#' @param caption Optional caption below the figure. `NULL` (default) omits it.
 #'
 #' @return A `ggplot` object, or `NULL` for empty input.
 #'
@@ -623,7 +710,8 @@ plot_nrv_distribution <- function(
   facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   bins = 30,
   xlab = value_col,
-  ylab = "Proportion in NRV"
+  ylab = "Proportion in NRV",
+  caption = NULL
 ) {
   df <- .collect_nrv_values(x)
   if (is.null(df) || !nrow(df)) {
@@ -670,6 +758,6 @@ plot_nrv_distribution <- function(
 
   gg +
     ggplot2::facet_wrap(stats::as.formula("~ .panel"), scales = "free") +
-    ggplot2::labs(x = xlab, y = ylab) +
+    ggplot2::labs(x = xlab, y = ylab, caption = caption) +
     ggplot2::theme_bw()
 }

@@ -8,7 +8,8 @@ nrv_replicate_values(x, value_col = "value", id_cols = NULL)
 }
 \arguments{
 \item{x}{Raw per-replicate values: parquet paths / roots (see
-\code{\link[=open_nrv_dataset]{open_nrv_dataset()}}), an Arrow \code{Dataset} / query, or a \code{data.frame}.}
+\code{\link[=open_nrv_dataset]{open_nrv_dataset()}}), an Arrow \code{Dataset} / \code{Table} / query, or a
+\code{data.frame}.}
 
 \item{value_col}{Name of the value column (default \code{"value"}).}
 
@@ -29,6 +30,13 @@ unchanged. A patch-level metric holds one value per patch, and becomes the
 mean over that replicate's patches. On a parquet dataset the reduction is
 pushed down to Arrow, so the per-patch rows are never collected into R.
 }
+\details{
+\code{NaN} values are treated as missing, like \code{NA}, on a parquet dataset as on a
+\code{data.frame}, and a value that no row defines is \code{NA}. Rows are sorted by the
+id columns, so the result does not depend on the order Arrow returns groups
+in.
+}
 \seealso{
-\code{\link[=summarize_nrv]{summarize_nrv()}} for the across-replicate envelope.
+\code{\link[=summarize_nrv]{summarize_nrv()}} for the across-replicate envelope, which takes
+this function's result as its input.
 }

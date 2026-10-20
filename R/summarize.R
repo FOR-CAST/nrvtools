@@ -136,23 +136,116 @@ open_nrv_dataset <- function(x) {
   arrow::open_dataset(files)
 }
 
+## `x` as a table that dplyr verbs run on: a data.frame or an Arrow object as given, else the
+## parquet dataset that its paths / roots name (NULL when there is none).
+.nrv_table <- function(x) {
+  if (is.data.frame(x) || inherits(x, c("Dataset", "arrow_dplyr_query", "ArrowTabular"))) {
+    return(x)
+  }
+  open_nrv_dataset(x)
+}
+
+## Arrow keeps NaN as a value, where R's `mean(na.rm = TRUE)` drops it with NA, so on a parquet
+## dataset a single NaN made its whole group's mean NaN. Mapping NaN to NA first makes both paths
+## drop it. The value column is read as double either way.
+.nan_to_na <- function(ds, value_col) {
+  vsym <- rlang::sym(value_col)
+  dplyr::mutate(ds, !!vsym := dplyr::if_else(is.nan(!!vsym), NA_real_, as.numeric(!!vsym)))
+}
+
+## `d` sorted by `cols`. Arrow returns groups in no fixed order, so without this two runs over the
+## same data differ in row order, and so do figures drawn from them. Radix order sorts strings by
+## their bytes, the same in every locale.
+.sort_rows <- function(d, cols) {
+  cols <- intersect(cols, names(d))
+  if (nrow(d) > 1L && length(cols)) {
+    d <- d[do.call(order, c(unname(as.list(d[cols])), method = "radix")), , drop = FALSE]
+  }
+  rownames(d) <- NULL
+  d
+}
+
+## Type 7 quantiles, the default of stats::quantile(), of the distinct values `v` occurring `w`
+## times each: the same order statistics and interpolation, without expanding the counts.
+.quantile7_counts <- function(v, w, probs) {
+  o <- order(v)
+  v <- v[o]
+  cw <- cumsum(w[o])
+  index <- 1 + (cw[[length(cw)]] - 1) * probs
+  lo <- floor(index)
+  hi <- ceiling(index)
+  qs <- v[findInterval(lo - 1, cw) + 1L]
+  qhi <- v[findInterval(hi - 1, cw) + 1L]
+  h <- index - lo
+  i <- which(index > lo & qhi != qs)
+  qs[i] <- (1 - h[i]) * qs[i] + h[i] * qhi[i]
+  qs
+}
+
+## The envelope statistics of the values `v` that occur `w` times each; `v` is NA for the rows
+## without a value, which count in `n_reps` only. Computed from the counts alone, so they do not
+## depend on the order in which Arrow's threads add up a group, as Arrow's own means and standard
+## deviations do (repeated runs differed in their last digits).
+.nrv_stats <- function(v, w) {
+  n_reps <- sum(w)
+  ok <- !is.na(v)
+  if (!any(ok)) {
+    return(list(
+      n_reps = n_reps,
+      mean = NA_real_,
+      sd = NA_real_,
+      min = NA_real_,
+      q25 = NA_real_,
+      median = NA_real_,
+      q75 = NA_real_,
+      max = NA_real_
+    ))
+  }
+  o <- order(v[ok])
+  v <- v[ok][o]
+  w <- w[ok][o]
+  n <- sum(w)
+  m <- sum(v * w) / n
+  q <- .quantile7_counts(v, w, c(0.25, 0.5, 0.75))
+  list(
+    n_reps = n_reps,
+    mean = m,
+    sd = if (n > 1L) sqrt(sum(w * (v - m)^2) / (n - 1L)) else NA_real_,
+    min = v[[1L]],
+    q25 = q[[1L]],
+    median = q[[2L]],
+    q75 = q[[3L]],
+    max = v[[length(v)]]
+  )
+}
+
 #' Summarize replicate metrics into a range-of-variation envelope
 #'
 #' Opens the replicate parquet(s) lazily and pushes the across-replicate
-#' reduction down to Arrow compute, so only the small envelope is materialized in
-#' R -- the per-replicate rows never come back. For each combination of the
+#' reduction down to Arrow compute, so only a small table is materialized in R --
+#' the per-replicate rows never come back. For each combination of the
 #' identifier columns it returns the replicate count and the mean, standard
-#' deviation, min, max and median of `value_col`, plus the standard error and 95%
-#' confidence half-width computed in R from the collected envelope.
+#' deviation, min, quartiles, median and max of `value_col`, plus the standard
+#' error and 95% confidence half-width.
 #'
-#' Note: Arrow computes *approximate* medians and quartiles; this is acceptable
-#' for range-of-variation envelopes. `min`/`max`/`mean`/`sd`/`n_reps` are exact.
-#' The five-number summary (`min`, `q25`, `median`, `q75`, `max`) supports
+#' Arrow counts how often each value occurs in each group, and the statistics
+#' are computed from those counts in R. The quartiles and median are therefore
+#' exact: type 7 quantiles, the default of [stats::quantile()], where Arrow's own
+#' are approximate (they differed by up to 15% on a replicate envelope). The other
+#' statistics do not depend on the order in which Arrow's threads add up a group,
+#' so a repeated run gives identical numbers. What comes back to R is one row per
+#' distinct value of a group: at most the replicate count for per-replicate
+#' values, and few for per-patch areas, which are whole multiples of the cell
+#' area. The five-number summary (`min`, `q25`, `median`, `q75`, `max`) supports
 #' box-and-whisker range-of-variation plots ([plot_nrv_envelope()] with
 #' `type = "boxplot"`).
 #'
-#' @param x Parquet paths / roots (see [open_nrv_dataset()]) or an Arrow
-#'   `Dataset` / query.
+#' `NaN` values are treated as missing, like `NA`. A group without a value
+#' gets `NA` statistics. Rows are sorted by the id columns.
+#'
+#' @param x Parquet paths / roots (see [open_nrv_dataset()]), an Arrow
+#'   `Dataset` / `Table` / query, or a `data.frame`, such as the per-replicate
+#'   values of [nrv_replicate_values()].
 #' @param value_col Name of the value column to aggregate (default `"value"`).
 #' @param id_cols Grouping columns; `NULL` (default) auto-detects those present
 #'   among `studyArea`, `scenario`, `rptPoly`, `time`, `poly`, `class`, `level`,
@@ -160,13 +253,14 @@ open_nrv_dataset <- function(x) {
 #'   was summarised over -- e.g. "BEC zones" vs "Landscape Units" -- where `poly`
 #'   is the individual subregion within that layer.)
 #'
-#' @return A `data.frame` with the id columns plus `n_reps`, `mean`, `sd`, `min`,
-#'   `q25`, `median`, `q75`, `max`, `se`, `ci`; zero rows if there is no data.
+#' @return A `data.frame` with the id columns plus `n_reps` (the number of rows
+#'   in the group), `mean`, `sd`, `min`, `q25`, `median`, `q75`, `max`, `se`,
+#'   `ci`; zero rows if there is no data.
 #'
 #' @export
 summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
-  ds <- if (inherits(x, c("Dataset", "arrow_dplyr_query"))) x else open_nrv_dataset(x)
-  if (is.null(ds)) {
+  ds <- .nrv_table(x)
+  if (is.null(ds) || (is.data.frame(ds) && !ncol(ds))) {
     return(data.frame())
   }
   cols <- names(ds)
@@ -187,34 +281,25 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
     )
   }
   id_cols <- setdiff(id_cols, value_col)
-  vsym <- rlang::sym(value_col)
-  ## Arrow's median/quantile are approximate (documented); muffle only those expected notes.
-  ## Arrow emits them while BUILDING the query, so wrap the whole pipeline, not just collect().
-  out <- withCallingHandlers(
-    ds |>
-      dplyr::group_by(!!!rlang::syms(id_cols)) |>
-      dplyr::summarise(
-        n_reps = dplyr::n(),
-        mean = mean(!!vsym, na.rm = TRUE),
-        sd = stats::sd(!!vsym, na.rm = TRUE),
-        min = min(!!vsym, na.rm = TRUE),
-        q25 = stats::quantile(!!vsym, 0.25, na.rm = TRUE),
-        median = stats::median(!!vsym, na.rm = TRUE),
-        q75 = stats::quantile(!!vsym, 0.75, na.rm = TRUE),
-        max = max(!!vsym, na.rm = TRUE),
-        .groups = "drop"
-      ) |>
-      dplyr::collect(),
-    warning = function(w) {
-      if (grepl("approximate (median|quantile)", conditionMessage(w))) {
-        invokeRestart("muffleWarning")
-      }
-    }
-  )
-  out <- as.data.frame(out)
+  counts <- .nan_to_na(ds, value_col) |>
+    dplyr::group_by(!!!rlang::syms(c(id_cols, value_col))) |>
+    dplyr::summarise(.n = dplyr::n(), .groups = "drop") |>
+    dplyr::collect() |>
+    data.table::as.data.table()
+  stat_cols <- c("mean", "sd", "min", "q25", "median", "q75", "max")
+  if (nrow(counts)) {
+    by_cols <- if (length(id_cols)) id_cols else NULL
+    out <- counts[, .nrv_stats(.SD[[1L]], .SD[[2L]]), by = by_cols, .SDcols = c(value_col, ".n")]
+    out <- as.data.frame(out)
+  } else {
+    out <- as.data.frame(counts)[0L, id_cols, drop = FALSE]
+    out$n_reps <- integer(0)
+    out[stat_cols] <- list(numeric(0))
+  }
+  out[stat_cols] <- lapply(out[stat_cols], function(v) replace(v, is.nan(v), NA_real_))
   out$se <- out$sd / sqrt(out$n_reps)
   out$ci <- out$se * stats::qt(0.975, pmax(out$n_reps - 1L, 1L))
-  out
+  .sort_rows(out, id_cols)
 }
 
 #' Collapse raw metrics to one value per replicate and summary year
@@ -226,8 +311,14 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
 #' mean over that replicate's patches. On a parquet dataset the reduction is
 #' pushed down to Arrow, so the per-patch rows are never collected into R.
 #'
+#' `NaN` values are treated as missing, like `NA`, on a parquet dataset as on a
+#' `data.frame`, and a value that no row defines is `NA`. Rows are sorted by the
+#' id columns, so the result does not depend on the order Arrow returns groups
+#' in.
+#'
 #' @param x Raw per-replicate values: parquet paths / roots (see
-#'   [open_nrv_dataset()]), an Arrow `Dataset` / query, or a `data.frame`.
+#'   [open_nrv_dataset()]), an Arrow `Dataset` / `Table` / query, or a
+#'   `data.frame`.
 #' @param value_col Name of the value column (default `"value"`).
 #' @param id_cols Grouping columns; `NULL` (default) uses those present among
 #'   `studyArea`, `scenario`, `rptPoly`, `replicate`, `rep`, `time`, `poly`,
@@ -238,13 +329,10 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
 #'   per-replicate mean in `value_col`; zero rows if there is no data.
 #'
 #' @export
-#' @seealso [summarize_nrv()] for the across-replicate envelope.
+#' @seealso [summarize_nrv()] for the across-replicate envelope, which takes
+#'   this function's result as its input.
 nrv_replicate_values <- function(x, value_col = "value", id_cols = NULL) {
-  ds <- if (is.data.frame(x) || inherits(x, c("Dataset", "arrow_dplyr_query"))) {
-    x
-  } else {
-    open_nrv_dataset(x)
-  }
+  ds <- .nrv_table(x)
   if (is.null(ds)) {
     return(data.frame())
   }
@@ -279,11 +367,12 @@ nrv_replicate_values <- function(x, value_col = "value", id_cols = NULL) {
   }
   id_cols <- setdiff(id_cols, value_col)
   vsym <- rlang::sym(value_col)
-  out <- ds |>
+  out <- .nan_to_na(ds, value_col) |>
     dplyr::group_by(!!!rlang::syms(id_cols)) |>
     dplyr::summarise(n = dplyr::n(), .value = mean(!!vsym, na.rm = TRUE), .groups = "drop") |>
     dplyr::collect()
   out <- as.data.frame(out)
+  out[[".value"]][is.nan(out[[".value"]])] <- NA_real_
   names(out)[names(out) == ".value"] <- value_col
-  out
+  .sort_rows(out, id_cols)
 }

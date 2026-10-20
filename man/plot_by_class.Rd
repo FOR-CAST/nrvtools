@@ -19,14 +19,16 @@ plot_by_class(
   ylab = NULL,
   title = NULL,
   cc_col = NULL,
-  cc_label = "current condition"
+  cc_label = "current condition",
+  caption = NULL
 )
 }
 \arguments{
 \item{summary_df}{A \code{data.frame} with a class column (\code{class_col}), a value
 column (\code{value_col}) and the faceting column(s). Rows whose value is not
 finite -- an undefined metric, such as the standard deviation of a single
-patch -- are dropped. \code{NULL}, or no finite value, returns \code{NULL}.}
+patch -- are dropped, with a message giving their number. \code{NULL}, or no
+finite value, returns \code{NULL}.}
 
 \item{type}{Plot style: \code{"box"} (box-and-whisker) or \code{"violin"}.}
 
@@ -39,14 +41,18 @@ result to get the page count. \code{NULL} draws every panel in one figure via
 a value column (see \code{cc_col}) and the unit columns (\code{poly}, \code{metric}, ...)
 that match its rows to the panels, e.g. \code{\link[=nrv_replicate_values]{nrv_replicate_values()}} of the
 current-condition snapshot. A row for a unit that is not plotted is
-dropped. \code{NULL} (default) draws none.}
+dropped. A warning says when no row matches a panel, or when several rows
+fall in one panel and class (their mean is drawn). \code{NULL} (default) draws
+none.}
 
 \item{value_col}{Name of the value column of \code{summary_df} (default \code{"mean"}).}
 
 \item{class_col}{Name of the class column, on the x axis (default \code{"class"}).}
 
 \item{facet}{Faceting column(s); those present are combined into the panel
-label (default \code{"poly"}, one panel per subregion).}
+label (default \code{"poly"}, one panel per subregion). A single column is
+faceted on directly, so a layer added to the result with its own data and
+that column lands in the matching panel.}
 
 \item{ncol, nrow}{Panel grid per page (default \code{4} x \code{3}).}
 
@@ -54,7 +60,7 @@ label (default \code{"poly"}, one panel per subregion).}
 panels; \code{"free_y"} scales each panel to its own values.}
 
 \item{xlab, ylab}{Axis labels. \code{NULL} (default) uses \code{class_col}, and the
-\code{metric} name(s) in \code{summary_df} (else \code{value_col}).}
+\code{metric} name(s) in \code{summary_df} (without a \code{metric} column, no y title).}
 
 \item{title}{Optional plot title.}
 
@@ -62,9 +68,13 @@ panels; \code{"free_y"} scales each panel to its own values.}
 (default) uses \code{value_col} if \code{cc} has it, else \code{"mean"}, else \code{"value"}.}
 
 \item{cc_label}{Legend label for the current-condition points.}
+
+\item{caption}{Optional caption below the figure, e.g. what the boxes
+summarise. \code{NULL} (default) omits it.}
 }
 \value{
-A \code{ggplot} object, or \code{NULL} for empty input.
+A \code{ggplot} object, or \code{NULL} for empty input. The y axis labels use
+thousands separators.
 }
 \description{
 Draws the distribution of a metric for each class (e.g. leading vegetation
@@ -80,8 +90,14 @@ years.
 Current-condition values passed as \code{cc} are drawn as red points, one per
 class and panel, so each class's current value can be read against its
 simulated range. A class that has a current-condition value but no simulated
-value in a panel keeps its point, which then stands without a box: the
-simulation never produced that class there.
+value in a panel keeps its point, which then stands without a box: either the
+simulation never produced that class there, or the metric is undefined
+(not finite) in every replicate and year where it did.
+
+The panels and the classes on the x axis come from every row of
+\code{summary_df}, before rows whose value is not finite are dropped, so a
+subregion or class whose values are all undefined keeps its empty panel or
+axis position, and the page count matches the input's subregions.
 }
 \seealso{
 \code{\link[=nrv_replicate_values]{nrv_replicate_values()}}, \code{\link[=plot_nrv_envelope]{plot_nrv_envelope()}},

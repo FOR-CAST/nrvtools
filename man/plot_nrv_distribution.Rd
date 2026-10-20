@@ -11,7 +11,8 @@ plot_nrv_distribution(
   facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   bins = 30,
   xlab = value_col,
-  ylab = "Proportion in NRV"
+  ylab = "Proportion in NRV",
+  caption = NULL
 )
 }
 \arguments{
@@ -29,6 +30,8 @@ panel label (default \code{c("rptPoly", "poly", "class", "metric", "metric.1")})
 \item{bins}{Number of histogram bins (default \code{30}).}
 
 \item{xlab, ylab}{Axis labels.}
+
+\item{caption}{Optional caption below the figure. \code{NULL} (default) omits it.}
 }
 \value{
 A \code{ggplot} object, or \code{NULL} for empty input.

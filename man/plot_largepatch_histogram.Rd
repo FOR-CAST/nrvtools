@@ -12,7 +12,8 @@ plot_largepatch_histogram(
   class_col = "class",
   bins = 30,
   xlab = "Number of patches",
-  title = NULL
+  title = NULL,
+  caption = NULL
 )
 }
 \arguments{
@@ -30,6 +31,8 @@ one per age class, drawn as red vertical lines. \code{NULL} omits them.}
 \item{bins}{Number of histogram bins (default \code{30}).}
 
 \item{xlab, title}{Axis label and plot title.}
+
+\item{caption}{Optional caption below the figure. \code{NULL} (default) omits it.}
 }
 \value{
 A \code{ggplot} object (\code{NULL} for empty input).

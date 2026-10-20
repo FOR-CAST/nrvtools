@@ -5,9 +5,15 @@
 \alias{plot_over_time_by_class}
 \title{NRV summary plots}
 \usage{
-plot_over_time(summary_df, ylabel, page = 1)
+plot_over_time(summary_df, ylabel, page = 1, xlab = "time", caption = NULL)
 
-plot_over_time_by_class(summary_df, ylabel, page = 1)
+plot_over_time_by_class(
+  summary_df,
+  ylabel,
+  page = 1,
+  xlab = "time",
+  caption = NULL
+)
 }
 \arguments{
 \item{summary_df}{a range-of-variation summary \code{data.frame} from
@@ -17,6 +23,10 @@ plot_over_time_by_class(summary_df, ylabel, page = 1)
 \item{ylabel}{character, specifying the label for the y-axis}
 
 \item{page}{integer, specifying the \code{facet_wrap_paginate} page to plot.}
+
+\item{xlab}{character, the label for the x-axis (default \code{"time"}).}
+
+\item{caption}{Optional caption below the figure. \code{NULL} (default) omits it.}
 }
 \value{
 ggplot object; invoked for side effect of plotting

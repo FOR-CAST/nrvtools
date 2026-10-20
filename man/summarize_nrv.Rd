@@ -7,8 +7,9 @@
 summarize_nrv(x, value_col = "value", id_cols = NULL)
 }
 \arguments{
-\item{x}{Parquet paths / roots (see \code{\link[=open_nrv_dataset]{open_nrv_dataset()}}) or an Arrow
-\code{Dataset} / query.}
+\item{x}{Parquet paths / roots (see \code{\link[=open_nrv_dataset]{open_nrv_dataset()}}), an Arrow
+\code{Dataset} / \code{Table} / query, or a \code{data.frame}, such as the per-replicate
+values of \code{\link[=nrv_replicate_values]{nrv_replicate_values()}}.}
 
 \item{value_col}{Name of the value column to aggregate (default \code{"value"}).}
 
@@ -19,21 +20,31 @@ was summarised over -- e.g. "BEC zones" vs "Landscape Units" -- where \code{poly
 is the individual subregion within that layer.)}
 }
 \value{
-A \code{data.frame} with the id columns plus \code{n_reps}, \code{mean}, \code{sd}, \code{min},
-\code{q25}, \code{median}, \code{q75}, \code{max}, \code{se}, \code{ci}; zero rows if there is no data.
+A \code{data.frame} with the id columns plus \code{n_reps} (the number of rows
+in the group), \code{mean}, \code{sd}, \code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}, \code{se},
+\code{ci}; zero rows if there is no data.
 }
 \description{
 Opens the replicate parquet(s) lazily and pushes the across-replicate
-reduction down to Arrow compute, so only the small envelope is materialized in
-R -- the per-replicate rows never come back. For each combination of the
+reduction down to Arrow compute, so only a small table is materialized in R --
+the per-replicate rows never come back. For each combination of the
 identifier columns it returns the replicate count and the mean, standard
-deviation, min, max and median of \code{value_col}, plus the standard error and 95\%
-confidence half-width computed in R from the collected envelope.
+deviation, min, quartiles, median and max of \code{value_col}, plus the standard
+error and 95\% confidence half-width.
 }
 \details{
-Note: Arrow computes \emph{approximate} medians and quartiles; this is acceptable
-for range-of-variation envelopes. \code{min}/\code{max}/\code{mean}/\code{sd}/\code{n_reps} are exact.
-The five-number summary (\code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}) supports
+Arrow counts how often each value occurs in each group, and the statistics
+are computed from those counts in R. The quartiles and median are therefore
+exact: type 7 quantiles, the default of \code{\link[stats:quantile]{stats::quantile()}}, where Arrow's own
+are approximate (they differed by up to 15\% on a replicate envelope). The other
+statistics do not depend on the order in which Arrow's threads add up a group,
+so a repeated run gives identical numbers. What comes back to R is one row per
+distinct value of a group: at most the replicate count for per-replicate
+values, and few for per-patch areas, which are whole multiples of the cell
+area. The five-number summary (\code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}) supports
 box-and-whisker range-of-variation plots (\code{\link[=plot_nrv_envelope]{plot_nrv_envelope()}} with
 \code{type = "boxplot"}).
+
+\code{NaN} values are treated as missing, like \code{NA}. A group without a value
+gets \code{NA} statistics. Rows are sorted by the id columns.
 }

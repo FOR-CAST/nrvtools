@@ -105,8 +105,11 @@ env <- summarize_nrv(root)
 env
 ```
 
-Only this small envelope is ever materialised in R; the per-replicate patch rows
-stay on disk.
+Only this small envelope is ever materialised in R, with, for the exact
+quartiles, a count of each distinct value in a group; the per-replicate patch
+rows stay on disk.
+This envelope pools every patch of every replicate, so its range runs from the
+smallest patch to the largest.
 
 ## Plot the envelope
 
@@ -130,7 +133,11 @@ plot_nrv_envelope(env, type = "boxplot", ylab = "patch area (ha)")
 The current condition is a single snapshot -- today's map -- so it is written
 and summarised as a replicate of its own.
 Passed as `cc`, it is drawn as a red dashed line in each panel, matched to the
-panels by subregion, class and metric:
+panels by subregion, class and metric.
+Patch area has one value per patch, so to compare like with like, reduce each
+replicate and the snapshot to their mean over patches first
+(`nrv_replicate_values()`): the envelope is then the range of the replicates,
+and the current condition one value per unit.
 
 ```{r current-condition}
 cc_root <- file.path(tempdir(), "nrv-demo-cc")
@@ -144,9 +151,15 @@ write_nrv_parquet(
   cc_root,
   replicate = "CC"
 )
-env_cc <- summarize_nrv(cc_root)
+env_reps <- summarize_nrv(nrv_replicate_values(root))
+env_cc <- summarize_nrv(nrv_replicate_values(cc_root))
 
-plot_nrv_envelope(env, cc = env_cc, ylab = "patch area (ha)")
+plot_nrv_envelope(
+  env_reps,
+  cc = env_cc,
+  ylab = nrv_metric_info("area", "patch")$label,
+  caption = "Grey band: range of the replicates' mean patch area; line: their mean"
+)
 ```
 
 ## Distributions by class

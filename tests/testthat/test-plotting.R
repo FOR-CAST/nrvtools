@@ -206,6 +206,59 @@ test_that("plot_nrv_envelope errors on a current condition without a value colum
   expect_snapshot(plot_nrv_envelope(new_envelope(), cc = data.frame(poly = "A")), error = TRUE)
 })
 
+test_that("the boxplot falls back to the current-condition mean", {
+  cc <- new_cc_envelope()
+  cc$median <- NULL
+  p <- plot_nrv_envelope(new_envelope(), type = "boxplot", cc = cc)
+  expect_equal(geom_data(p, "GeomHline")$.cc, c(15, 25))
+})
+
+test_that("a current condition that matches no panel warns and draws nothing", {
+  cc <- new_cc_envelope()
+  cc$poly <- tolower(cc$poly)
+  expect_warning(p <- plot_nrv_envelope(new_envelope(), cc = cc), "no current-condition row")
+  expect_null(geom_data(p, "GeomHline"))
+})
+
+test_that("several current-condition rows in one panel warn, and their mean is drawn", {
+  cc <- new_cc_envelope()
+  cc <- rbind(cc, transform(cc, mean = mean + 10))
+  expect_warning(p <- plot_nrv_envelope(new_envelope(), cc = cc), "2 current-condition value")
+  expect_equal(geom_data(p, "GeomHline")$.cc, c(20, 30))
+})
+
+test_that("plot_nrv_envelope keeps its axis titles and takes an x title and caption", {
+  b <- ggplot2::ggplot_build(plot_nrv_envelope(new_envelope()))
+  expect_equal(b$plot$labels$x, "time")
+  expect_equal(b$plot$labels$y, "value")
+  expect_null(b$plot$labels$caption)
+
+  p <- plot_nrv_envelope(new_envelope(), xlab = "Simulation year", caption = "Grey band: range")
+  b <- ggplot2::ggplot_build(p)
+  expect_equal(b$plot$labels$x, "Simulation year")
+  expect_equal(b$plot$labels$caption, "Grey band: range")
+})
+
+test_that("plot_nrv_envelope labels its y axis with thousands separators", {
+  env <- new_envelope()
+  cols <- c("mean", "min", "q25", "median", "q75", "max")
+  env[cols] <- env[cols] * 1e5
+  for (type in c("ribbon", "boxplot")) {
+    b <- ggplot2::ggplot_build(plot_nrv_envelope(env, type))
+    lab <- b$layout$panel_params[[1]]$y$get_labels()
+    expect_true(any(grepl(",", lab)))
+    expect_false(any(grepl("e[+]", lab)))
+  }
+})
+
+test_that("plot_nrv_envelope sets the grid of an unpaginated figure", {
+  env <- new_envelope(c("A", "B", "C"))
+  expect_equal(max(ggplot2::ggplot_build(plot_nrv_envelope(env))$layout$layout$ROW), 1)
+  expect_equal(max(ggplot2::ggplot_build(plot_nrv_envelope(env, ncol = 1))$layout$layout$ROW), 3)
+  p <- plot_nrv_envelope(new_envelope(sprintf("P%02d", 1:13)), page = 1)
+  expect_equal(ggforce::n_pages(p), 2) ## 4 x 3 to a page by default
+})
+
 ## per-replicate values of one class-level metric: three replicates, two subregions, two classes
 new_replicate_values <- function() {
   data.frame(
@@ -252,15 +305,125 @@ test_that("plot_by_class draws current conditions per class and panel", {
   expect_no_error(ggplot2::ggplot_build(p))
 })
 
-test_that("plot_by_class drops values that are not finite", {
+test_that("plot_by_class drops values that are not finite, with a message", {
   reps <- new_replicate_values()
   reps$value[1:2] <- c(NaN, NA)
-  p <- plot_by_class(reps, value_col = "value")
+  expect_message(p <- plot_by_class(reps, value_col = "value"), "dropped 2 row")
   expect_equal(nrow(p$data), 10L)
   expect_no_warning(ggplot2::ggplot_build(p))
 
   reps$value <- NA_real_
   expect_null(plot_by_class(reps, value_col = "value"))
+})
+
+## nrvtools 0.3.4's plot_by_class(): a call it accepted must draw the same figure
+plot_by_class_0.3.4 <- function(summary_df, type = c("box", "violin"), page = 1) {
+  stopifnot(type %in% c("box", "violin"))
+  ggplot2::ggplot(summary_df, ggplot2::aes(x = class, y = mean)) +
+    ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
+    switch(
+      type,
+      box = ggplot2::geom_boxplot(outlier.colour = "grey4", outlier.shape = 21, outlier.size = 1.0),
+      violin = ggplot2::geom_violin()
+    ) +
+    ggplot2::scale_x_discrete(guide = ggplot2::guide_axis(angle = 90)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(strip.text.x = ggplot2::element_text(size = 14)) +
+    ggplot2::ylab(summary_df$metric)
+}
+
+## what a by-class figure draws: its panels, each layer's data, the classes and the axis titles
+drawn <- function(p) {
+  b <- ggplot2::ggplot_build(p)
+  lay <- as.data.frame(b$layout$layout)
+  list(
+    panels = data.frame(
+      PANEL = lay$PANEL,
+      ROW = lay$ROW,
+      COL = lay$COL,
+      poly = as.character(lay$poly)
+    ),
+    data = lapply(b$data, as.data.frame),
+    classes = b$layout$panel_params[[1]]$x$get_labels(),
+    x = b$plot$labels$x,
+    y = unique(b$plot$labels$y)
+  )
+}
+
+## an envelope of one class-level metric: `npoly` subregions x three classes x three summary years
+new_class_envelope <- function(npoly = 3) {
+  withr::local_seed(4)
+  d <- expand.grid(
+    time = c(700, 800, 900),
+    poly = sprintf("P%02d", seq_len(npoly)),
+    class = c("Decid", "Mixed", "Pine"),
+    stringsAsFactors = FALSE
+  )
+  d$level <- "class"
+  d$metric <- "ca"
+  d$mean <- round(stats::runif(nrow(d), 10, 100), 2)
+  d
+}
+
+test_that("plot_by_class draws what 0.3.4 drew for the same call", {
+  for (type in c("box", "violin")) {
+    d <- new_class_envelope()
+    expect_equal(drawn(plot_by_class(d, type)), drawn(plot_by_class_0.3.4(d, type)))
+    d <- new_class_envelope(13)
+    for (page in 1:2) {
+      expect_equal(
+        drawn(plot_by_class(d, type, page = page)),
+        drawn(plot_by_class_0.3.4(d, type, page = page))
+      )
+    }
+  }
+})
+
+test_that("plot_by_class keeps the panels and classes of values that are not finite", {
+  d <- new_class_envelope()
+  d$mean[d$poly == "P02"] <- NA
+  d$mean[d$class == "Mixed"] <- NaN
+  expect_message(p <- plot_by_class(d), "dropped 15 row")
+  new <- drawn(p)
+  old <- suppressWarnings(drawn(plot_by_class_0.3.4(d, "box")))
+
+  expect_equal(new$panels$poly, c("P01", "P02", "P03")) ## P02 is an empty panel
+  expect_equal(new$classes, c("Decid", "Mixed", "Pine")) ## Mixed keeps its place
+  expect_equal(new$panels, old$panels)
+  expect_equal(new$classes, old$classes)
+})
+
+test_that("plot_by_class draws a page counted from every subregion of its input", {
+  d <- new_class_envelope(13)
+  d$mean[d$poly == "P13"] <- NA ## the only panel of page 2
+  p <- suppressMessages(plot_by_class(d, page = 2))
+  expect_equal(ggforce::n_pages(p), 2)
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_by_class has no y title without a metric column, as in 0.3.4", {
+  d <- new_class_envelope()
+  d$metric <- NULL
+  expect_null(drawn(plot_by_class(d))$y)
+  expect_equal(drawn(plot_by_class(d))$y, drawn(plot_by_class_0.3.4(d, "box"))$y)
+})
+
+test_that("a layer added to plot_by_class with its own data lands in its own panel", {
+  extra <- data.frame(poly = c("P01", "P02", "P03"), class = "Pine", mean = c(500, 600, 700))
+  p <- plot_by_class(new_class_envelope()) + ggplot2::geom_point(data = extra)
+  pts <- ggplot2::ggplot_build(p)$data[[2]]
+  expect_equal(as.integer(pts$PANEL), 1:3)
+  expect_equal(pts$y, extra$mean)
+})
+
+test_that("plot_by_class takes a caption and labels its y axis with thousands separators", {
+  d <- new_class_envelope()
+  d$mean <- d$mean * 1e4
+  b <- ggplot2::ggplot_build(plot_by_class(d, caption = "Boxes: quartiles"))
+  expect_equal(b$plot$labels$caption, "Boxes: quartiles")
+  lab <- b$layout$panel_params[[1]]$y$get_labels()
+  expect_true(any(grepl(",", lab)))
+  expect_false(any(grepl("e[+]", lab)))
 })
 
 test_that("plot_by_class draws every panel at once without a page", {

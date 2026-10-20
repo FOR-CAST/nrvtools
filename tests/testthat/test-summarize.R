@@ -124,6 +124,95 @@ test_that("nrv_replicate_values errors on a missing value column", {
   expect_snapshot(nrv_replicate_values(new_replicate(1), value_col = "nope"), error = TRUE)
 })
 
+test_that("summarize_nrv gives exact type 7 quartiles", {
+  root <- withr::local_tempdir()
+  withr::local_seed(2)
+  vals <- lapply(1:7, function(r) {
+    ## whole numbers, so values tie within and across replicates; missing values are skipped
+    df <- data.frame(
+      time = rep(c(0, 50), each = 3),
+      poly = "A",
+      value = round(stats::runif(6, 0, 9))
+    )
+    if (r == 1L) {
+      df$value[c(1, 4)] <- c(NA, NaN)
+    }
+    write_nrv_parquet(df, root, r)
+    df
+  })
+  env <- summarize_nrv(root)
+  ov <- do.call(rbind, vals)
+  for (t in c(0, 50)) {
+    v <- ov$value[ov$time == t]
+    expect_identical(
+      unlist(env[env$time == t, c("q25", "median", "q75")], use.names = FALSE),
+      unname(stats::quantile(v, c(0.25, 0.5, 0.75), na.rm = TRUE, type = 7))
+    )
+  }
+})
+
+test_that("summarize_nrv takes the per-replicate values of nrv_replicate_values()", {
+  root <- withr::local_tempdir()
+  for (r in 1:2) {
+    write_nrv_parquet(new_replicate(r), root, r)
+  }
+  env <- summarize_nrv(nrv_replicate_values(root))
+  area <- env[env$metric == "area", ]
+  expect_equal(area$n_reps, c(2L, 2L)) ## two replicates a year, not five patches
+  expect_equal(area$mean, c(3, 22.5))
+  expect_equal(area$median, c(3, 22.5))
+  expect_equal(nrow(summarize_nrv(data.frame())), 0L)
+})
+
+## one replicate of a patch-level metric holding NA and NaN: class p has a NaN among its values, q
+## only NA, r only NaN, s one NA
+new_nan_replicate <- function() {
+  data.frame(
+    time = 0,
+    poly = "A",
+    class = c("p", "p", "p", "s", "s", "q", "q", "r"),
+    level = "patch",
+    metric = "area",
+    value = c(1, 2, NaN, NA, 4, NA, NA, NaN)
+  )
+}
+
+test_that("NaN is missing in Arrow as in a data.frame", {
+  root <- withr::local_tempdir()
+  write_nrv_parquet(new_nan_replicate(), root, 1L)
+  df <- new_nan_replicate()
+  df$replicate <- 1L
+
+  v <- nrv_replicate_values(root)
+  expect_equal(nrv_replicate_values(df), v)
+  expect_equal(v$class, c("p", "q", "r", "s"))
+  expect_equal(v$value, c(1.5, NA, NA, 4))
+  expect_equal(v$n, c(3L, 2L, 1L, 2L))
+
+  env <- summarize_nrv(root)
+  expect_equal(summarize_nrv(df), env)
+  expect_equal(env$mean, c(1.5, NA, NA, 4))
+  expect_equal(env$min, c(1, NA, NA, 4))
+  expect_equal(env$median, c(1.5, NA, NA, 4))
+})
+
+test_that("rows come back sorted by the id columns", {
+  root <- withr::local_tempdir()
+  for (r in c(3L, 1L, 2L)) {
+    write_nrv_parquet(data.frame(time = c(50, 0), poly = c("B", "A"), value = r), root, r)
+  }
+  v <- nrv_replicate_values(root)
+  expect_equal(v$replicate, rep(1:3, each = 2))
+  expect_equal(v$time, rep(c(0, 50), 3))
+  expect_equal(rownames(v), as.character(1:6))
+  expect_identical(nrv_replicate_values(root), v)
+
+  env <- summarize_nrv(root)
+  expect_equal(env$time, c(0, 50))
+  expect_equal(env$poly, c("A", "B"))
+  expect_identical(summarize_nrv(root), env)
+})
+
 test_that("tidy_nrv_metrics binds a metric list, drops empties, stamps ids", {
   metric_list <- list(
     lsm_l_ed = data.frame(level = "landscape", metric = "ed", value = 1:2, rep = 1L, time = 0),

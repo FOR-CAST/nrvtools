@@ -10,12 +10,14 @@ plot_nrv_envelope(
   facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   ylab = "value",
   title = NULL,
-  ncol = 4,
-  nrow = 3,
+  ncol = NULL,
+  nrow = NULL,
   page = NULL,
   cc = NULL,
   cc_col = NULL,
-  cc_label = "current condition"
+  cc_label = "current condition",
+  xlab = "time",
+  caption = NULL
 )
 }
 \arguments{
@@ -35,7 +37,9 @@ within it).}
 
 \item{title}{Optional plot title (e.g. the study area and metric name).}
 
-\item{ncol, nrow}{Panel grid per page when paginating (default \code{4} x \code{3}).}
+\item{ncol, nrow}{Panel grid. With \code{page}, the grid of each page; \code{NULL}
+(default) is \code{4} x \code{3}. Without \code{page}, passed to \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}},
+where \code{NULL} lets it choose.}
 
 \item{page}{Page to render. \code{NULL} (default) draws every panel in one figure
 via \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}; an integer paginates the panels across pages via
@@ -44,24 +48,35 @@ figures. Use \code{\link[ggforce:n_pages]{ggforce::n_pages()}} on the \code{page
 count, then loop \code{page} to write one file per page.}
 
 \item{cc}{Optional current-condition values: typically the \code{\link[=summarize_nrv]{summarize_nrv()}}
-envelope of the current-condition snapshot (a single replicate, so its
-\code{mean} and \code{median} both equal the value), or a raw table with a \code{value}
-column. Rows are matched to panels on the unit columns (\code{poly}, \code{class},
-\code{metric}, ...) that \code{cc} and \code{nrv_df} share, so \code{cc} may span more units
-than \code{nrv_df} plots. A row for a unit that \code{nrv_df} does not plot is
-dropped, so no panel is added for it, and a panel with no matching row draws
-no line. Several rows for one panel are averaged. \code{NULL} (default) draws
-none.}
+envelope of the current-condition snapshot, or a table with a \code{value}
+column. A class- or landscape-level metric has one value per unit in the
+snapshot, so that envelope's \code{mean} and \code{median} both equal it. A
+patch-level metric has one value per patch, and the snapshot's patch mean
+and median can differ many times over; summarise \code{\link[=nrv_replicate_values]{nrv_replicate_values()}}
+of the snapshot instead, to get one value per unit (the mean over its
+patches) as for the replicates. Rows are matched to panels on the unit
+columns (\code{poly}, \code{class}, \code{metric}, ...) that \code{cc} and \code{nrv_df} share, so
+\code{cc} may span more units than \code{nrv_df} plots. A row for a unit that \code{nrv_df}
+does not plot is dropped, so no panel is added for it, and a panel with no
+matching row draws no line. A warning says when no row matches a panel, or
+when several rows fall in one panel (their mean is drawn). \code{NULL} (default)
+draws none.}
 
 \item{cc_col}{Column of \code{cc} holding the current-condition value. \code{NULL}
 (default) compares like with like: \code{"mean"} (the ribbon's line) for
-\code{type = "ribbon"}, \code{"median"} (the box's middle line) for
-\code{type = "boxplot"}, falling back to \code{"value"}.}
+\code{type = "ribbon"}, falling back to \code{"value"}; \code{"median"} (the box's middle
+line) for \code{type = "boxplot"}, falling back to \code{"value"}, then \code{"mean"}.}
 
 \item{cc_label}{Legend label for the current-condition line.}
+
+\item{xlab}{X-axis label (default \code{"time"}).}
+
+\item{caption}{Optional caption below the figure, e.g. what the band or
+boxes summarise. \code{NULL} (default) omits it.}
 }
 \value{
-A \code{ggplot} object, or \code{NULL} for empty input.
+A \code{ggplot} object, or \code{NULL} for empty input. The y axis labels use
+thousands separators.
 }
 \description{
 Plots the across-replicate range of variation from an envelope produced by
@@ -81,9 +96,9 @@ each distinct combination gets its own panel and replicate envelopes never
 overlay ambiguously within a panel; a constant column is dropped from the panel
 label, and trivial data collapses to a single panel.
 
-Current-condition values passed as \code{cc} are drawn in each panel as a red
-dashed horizontal line, so the simulated range can be read against today's
-value; a legend labels the line.
+Current-condition values passed as \code{cc} are drawn as a red dashed horizontal
+line in each panel where \code{cc} has a value, so the simulated range can be read
+against today's value; a legend labels the line.
 }
 \seealso{
 \code{\link[=plot_by_class]{plot_by_class()}} for the per-class distributions.
