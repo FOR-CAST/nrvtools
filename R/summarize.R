@@ -153,6 +153,17 @@ open_nrv_dataset <- function(x) {
   dplyr::mutate(ds, !!vsym := dplyr::if_else(is.nan(!!vsym), NA_real_, as.numeric(!!vsym)))
 }
 
+## How often each value of `value_col` occurs in each group of `id_cols` (column `.n`), NaN counted
+## as NA, as a data.table. On a parquet dataset Arrow does the counting, so what comes back to R is
+## one row per distinct value of a group, however many rows hold it.
+.nrv_value_counts <- function(ds, value_col, id_cols) {
+  .nan_to_na(ds, value_col) |>
+    dplyr::group_by(!!!rlang::syms(c(id_cols, value_col))) |>
+    dplyr::summarise(.n = dplyr::n(), .groups = "drop") |>
+    dplyr::collect() |>
+    data.table::as.data.table()
+}
+
 ## `d` sorted by `cols`. Arrow returns groups in no fixed order, so without this two runs over the
 ## same data differ in row order, and so do figures drawn from them. Radix order sorts strings by
 ## their bytes, the same in every locale.
@@ -180,6 +191,25 @@ open_nrv_dataset <- function(x) {
   i <- which(index > lo & qhi != qs)
   qs[i] <- (1 - h[i]) * qs[i] + h[i] * qhi[i]
   qs
+}
+
+## The row count `n` and the mean `.value` of each group of `id_cols`, from the value counts of
+## .nrv_value_counts(); NA for a group without a value, whose rows count in `n` only. The counts are
+## sorted first, so a group's values are added up in increasing order whatever order Arrow returns
+## them in. Arrow's own means depended on the order in which its threads added up a group, and
+## differed between runs in their last digits.
+.nrv_means <- function(counts, value_col, id_cols) {
+  counts <- .sort_rows(as.data.frame(counts), c(id_cols, value_col))
+  grp <- if (length(id_cols)) data.table::rleidv(counts, id_cols) else rep(1L, nrow(counts))
+  v <- counts[[value_col]]
+  w <- counts[[".n"]]
+  ok <- !is.na(v)
+  total <- function(x) as.vector(rowsum(x, grp, reorder = FALSE))
+  out <- counts[!duplicated(grp), id_cols, drop = FALSE]
+  out$n <- total(w)
+  defined <- total(ifelse(ok, w, 0L))
+  out$.value <- ifelse(defined > 0L, total(ifelse(ok, v * w, 0)) / defined, NA_real_)
+  out
 }
 
 ## The envelope statistics of the values `v` that occur `w` times each; `v` is NA for the rows
@@ -281,11 +311,7 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
     )
   }
   id_cols <- setdiff(id_cols, value_col)
-  counts <- .nan_to_na(ds, value_col) |>
-    dplyr::group_by(!!!rlang::syms(c(id_cols, value_col))) |>
-    dplyr::summarise(.n = dplyr::n(), .groups = "drop") |>
-    dplyr::collect() |>
-    data.table::as.data.table()
+  counts <- .nrv_value_counts(ds, value_col, id_cols)
   stat_cols <- c("mean", "sd", "min", "q25", "median", "q75", "max")
   if (nrow(counts)) {
     by_cols <- if (length(id_cols)) id_cols else NULL
@@ -308,8 +334,12 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
 #' replicate, summary year and unit. Class- and landscape-level metrics already
 #' hold one value per replicate, summary year and unit, and pass through
 #' unchanged. A patch-level metric holds one value per patch, and becomes the
-#' mean over that replicate's patches. On a parquet dataset the reduction is
-#' pushed down to Arrow, so the per-patch rows are never collected into R.
+#' mean over that replicate's patches. As in [summarize_nrv()], Arrow counts how
+#' often each value occurs in each group, and the means are computed from those
+#' counts in R, so they depend neither on the order of the rows nor on the order
+#' in which Arrow's threads add up a group: a repeated run gives identical
+#' numbers. What comes back to R is one row per distinct value of a group: few
+#' for patch areas, which are whole multiples of the cell area.
 #'
 #' `NaN` values are treated as missing, like `NA`, on a parquet dataset as on a
 #' `data.frame`, and a value that no row defines is `NA`. Rows are sorted by the
@@ -366,12 +396,14 @@ nrv_replicate_values <- function(x, value_col = "value", id_cols = NULL) {
     )
   }
   id_cols <- setdiff(id_cols, value_col)
-  vsym <- rlang::sym(value_col)
-  out <- .nan_to_na(ds, value_col) |>
-    dplyr::group_by(!!!rlang::syms(id_cols)) |>
-    dplyr::summarise(n = dplyr::n(), .value = mean(!!vsym, na.rm = TRUE), .groups = "drop") |>
-    dplyr::collect()
-  out <- as.data.frame(out)
+  counts <- .nrv_value_counts(ds, value_col, id_cols)
+  if (nrow(counts)) {
+    out <- .nrv_means(counts, value_col, id_cols)
+  } else {
+    out <- as.data.frame(counts)[0L, id_cols, drop = FALSE]
+    out$n <- integer(0)
+    out$.value <- numeric(0)
+  }
   out[[".value"]][is.nan(out[[".value"]])] <- NA_real_
   names(out)[names(out) == ".value"] <- value_col
   .sort_rows(out, id_cols)

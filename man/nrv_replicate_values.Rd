@@ -27,8 +27,12 @@ Returns the values whose distribution \code{\link[=plot_by_class]{plot_by_class(
 replicate, summary year and unit. Class- and landscape-level metrics already
 hold one value per replicate, summary year and unit, and pass through
 unchanged. A patch-level metric holds one value per patch, and becomes the
-mean over that replicate's patches. On a parquet dataset the reduction is
-pushed down to Arrow, so the per-patch rows are never collected into R.
+mean over that replicate's patches. As in \code{\link[=summarize_nrv]{summarize_nrv()}}, Arrow counts how
+often each value occurs in each group, and the means are computed from those
+counts in R, so they depend neither on the order of the rows nor on the order
+in which Arrow's threads add up a group: a repeated run gives identical
+numbers. What comes back to R is one row per distinct value of a group: few
+for patch areas, which are whole multiples of the cell area.
 }
 \details{
 \code{NaN} values are treated as missing, like \code{NA}, on a parquet dataset as on a

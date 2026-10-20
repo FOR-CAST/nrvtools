@@ -213,6 +213,30 @@ test_that("rows come back sorted by the id columns", {
   expect_identical(summarize_nrv(root), env)
 })
 
+test_that("per-replicate means do not depend on the order of the rows", {
+  ## patch areas of 1.44 ha cells, which binary floating point holds inexactly, so the order in
+  ## which a group's values are added up can change the last digits of their sum
+  withr::local_seed(3)
+  df <- data.frame(
+    replicate = 1L,
+    time = 0,
+    poly = "A",
+    class = rep(sprintf("c%02d", 1:20), each = 200),
+    level = "patch",
+    metric = "area",
+    value = 1.44 * sample.int(400, 4000, replace = TRUE)
+  )
+  v <- nrv_replicate_values(df)
+  expect_equal(v$value, as.vector(tapply(df$value, df$class, mean)))
+  for (i in 1:3) {
+    expect_identical(nrv_replicate_values(df[sample.int(nrow(df)), ]), v)
+  }
+  ## and Arrow, reading the rows in yet another order, gives the same numbers
+  root <- withr::local_tempdir()
+  write_nrv_parquet(df[sample.int(nrow(df)), ], root, 1L)
+  expect_identical(nrv_replicate_values(root), v)
+})
+
 test_that("tidy_nrv_metrics binds a metric list, drops empties, stamps ids", {
   metric_list <- list(
     lsm_l_ed = data.frame(level = "landscape", metric = "ed", value = 1:2, rep = 1L, time = 0),
