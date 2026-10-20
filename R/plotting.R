@@ -17,6 +17,79 @@ utils::globalVariables(c(
   factor(lab, levels = unique(lab[ord]))
 }
 
+## The columns that identify a reporting unit and metric in the long schema (cf. summarize_nrv()):
+## a current-condition value must agree with the plotted data on every one of these that both carry.
+.nrv_unit_cols <- c(
+  "studyArea",
+  "scenario",
+  "rptPoly",
+  "poly",
+  "class",
+  "level",
+  "metric",
+  "metric.1"
+)
+
+## First of `candidates` that is a column of `cc`, unless the caller named one (`cc_col`).
+.cc_value_col <- function(cc, cc_col, candidates) {
+  if (!is.null(cc_col)) {
+    return(cc_col)
+  }
+  hit <- intersect(candidates, names(cc))
+  if (!length(hit)) {
+    stop(
+      "no current-condition value column in `cc`: expected one of ",
+      paste(candidates, collapse = ", "),
+      " (or set `cc_col`)",
+      call. = FALSE
+    )
+  }
+  hit[[1L]]
+}
+
+## Current-condition reference values for the panels of `df` (which carries its `.panel` column),
+## one per panel and, when `by` is given, per value of that column (e.g. the class on a by-class
+## plot). `cc` rows are matched to `df` on `keys` -- the unit columns both tables carry -- rather
+## than only on the faceting columns that vary, so a current-condition table spanning other
+## subregions or metrics contributes just the rows for the units `df` plots. A `cc` row matching no
+## plotted unit is dropped, and when `cc` shares none of `keys` its value applies to every panel.
+## Several rows for one panel (and `by` value) are averaged; NA values are dropped. Returns `NULL`
+## when nothing is left to draw, else a data.frame of `.panel`, `by` and the value as `.cc`.
+.cc_by_panel <- function(cc, df, keys, cc_col, by = NULL) {
+  cc <- as.data.frame(cc)
+  absent <- setdiff(c(cc_col, by), names(cc))
+  if (length(absent)) {
+    stop(
+      "`cc` lacks column(s) ",
+      paste(absent, collapse = ", "),
+      " (have: ",
+      paste(names(cc), collapse = ", "),
+      ")",
+      call. = FALSE
+    )
+  }
+  on <- setdiff(intersect(keys, intersect(names(cc), names(df))), by)
+  as_chr <- function(d) {
+    d[on] <- lapply(d[on], as.character)
+    d
+  }
+  panels <- as_chr(unique(df[c(on, ".panel")]))
+  m <- merge(as_chr(cc[c(on, by, cc_col)]), panels, by = on)
+  m <- m[!is.na(m[[cc_col]]), , drop = FALSE]
+  if (!nrow(m)) {
+    return(NULL)
+  }
+  grp <- c(".panel", by)
+  out <- stats::aggregate(m[cc_col], by = m[grp], FUN = mean)
+  names(out)[names(out) == cc_col] <- ".cc"
+  out[[".panel"]] <- if (is.factor(df[[".panel"]])) {
+    factor(as.character(out[[".panel"]]), levels = levels(df[[".panel"]]))
+  } else {
+    as.character(out[[".panel"]])
+  }
+  out
+}
+
 #' Leading-vegetation age-class boxplot (v2 LandWeb_summary form)
 #'
 #' Reproduces the v2 "Leading vegetation by age class" boxplot for a single
@@ -175,24 +248,168 @@ plot_over_time_by_class <- function(summary_df, ylabel, page = 1) {
     ylab(ylabel)
 }
 
-#' @param type character, specifying one of "box" or "violin"
+#' Distribution of a metric by class, one panel per reporting unit
 #'
+#' Draws the distribution of a metric for each class (e.g. leading vegetation
+#' type or seral stage) as a box-and-whisker (`type = "box"`) or a violin
+#' (`type = "violin"`), with one panel per reporting unit, paginated across
+#' figures. Pass the per-replicate values from [nrv_replicate_values()] (with
+#' `value_col = "value"`) to show the range of variation across replicates and
+#' summary years. The default, `value_col = "mean"`, reads a [summarize_nrv()]
+#' envelope instead, so each box spans the across-replicate means of the summary
+#' years.
+#'
+#' Current-condition values passed as `cc` are drawn as red points, one per
+#' class and panel, so each class's current value can be read against its
+#' simulated range. A class that has a current-condition value but no simulated
+#' value in a panel keeps its point, which then stands without a box: the
+#' simulation never produced that class there.
+#'
+#' @param summary_df A `data.frame` with a class column (`class_col`), a value
+#'   column (`value_col`) and the faceting column(s). Rows whose value is not
+#'   finite -- an undefined metric, such as the standard deviation of a single
+#'   patch -- are dropped. `NULL`, or no finite value, returns `NULL`.
+#' @param type Plot style: `"box"` (box-and-whisker) or `"violin"`.
+#' @param page Page to render (default `1`) via
+#'   [ggforce::facet_wrap_paginate()]; use [ggforce::n_pages()] on the `page = 1`
+#'   result to get the page count. `NULL` draws every panel in one figure via
+#'   [ggplot2::facet_wrap()].
+#' @param cc Optional current-condition values: a `data.frame` with `class_col`,
+#'   a value column (see `cc_col`) and the unit columns (`poly`, `metric`, ...)
+#'   that match its rows to the panels, e.g. [nrv_replicate_values()] of the
+#'   current-condition snapshot. A row for a unit that is not plotted is
+#'   dropped. `NULL` (default) draws none.
+#' @param value_col Name of the value column of `summary_df` (default `"mean"`).
+#' @param class_col Name of the class column, on the x axis (default `"class"`).
+#' @param facet Faceting column(s); those present are combined into the panel
+#'   label (default `"poly"`, one panel per subregion).
+#' @param ncol,nrow Panel grid per page (default `4` x `3`).
+#' @param scales Facet scales: `"fixed"` (default) shares the y axis across
+#'   panels; `"free_y"` scales each panel to its own values.
+#' @param xlab,ylab Axis labels. `NULL` (default) uses `class_col`, and the
+#'   `metric` name(s) in `summary_df` (else `value_col`).
+#' @param title Optional plot title.
+#' @param cc_col Column of `cc` holding the current-condition value. `NULL`
+#'   (default) uses `value_col` if `cc` has it, else `"mean"`, else `"value"`.
+#' @param cc_label Legend label for the current-condition points.
+#'
+#' @return A `ggplot` object, or `NULL` for empty input.
+#'
+#' @importFrom rlang .data
 #' @export
-#' @rdname plot_by
-plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
-  stopifnot(type %in% c("box", "violin"))
+#' @seealso [nrv_replicate_values()], [plot_nrv_envelope()],
+#'   [plot_leading_boxplot()]
+plot_by_class <- function(
+  summary_df,
+  type = c("box", "violin"),
+  page = 1,
+  cc = NULL,
+  value_col = "mean",
+  class_col = "class",
+  facet = "poly",
+  ncol = 4,
+  nrow = 3,
+  scales = "fixed",
+  xlab = NULL,
+  ylab = NULL,
+  title = NULL,
+  cc_col = NULL,
+  cc_label = "current condition"
+) {
+  type <- match.arg(type)
+  if (is.null(summary_df) || !nrow(summary_df)) {
+    return(invisible(NULL))
+  }
+  summary_df <- as.data.frame(summary_df)
+  absent <- setdiff(c(class_col, value_col), names(summary_df))
+  if (length(absent)) {
+    stop(
+      "plot_by_class(): `summary_df` lacks column(s) ",
+      paste(absent, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  summary_df <- summary_df[is.finite(summary_df[[value_col]]), , drop = FALSE]
+  if (!nrow(summary_df)) {
+    return(invisible(NULL))
+  }
+  facet <- intersect(facet, names(summary_df))
+  summary_df[[".panel"]] <- if (length(facet)) .panel_factor(summary_df, facet) else "all"
 
-  ggplot(summary_df, aes(x = class, y = mean)) +
-    ggforce::facet_wrap_paginate(~poly, ncol = 4, nrow = 3, page = page) +
+  ccdf <- NULL
+  if (!is.null(cc) && NROW(cc)) {
+    ccdf <- .cc_by_panel(
+      cc,
+      summary_df,
+      keys = union(.nrv_unit_cols, facet),
+      cc_col = .cc_value_col(cc, cc_col, c(value_col, "mean", "value")),
+      by = class_col
+    )
+  }
+
+  ## one set of class levels for both layers: the data's own order (a factor keeps its levels,
+  ## anything else sorts), then any class that only the current condition has.
+  cls <- summary_df[[class_col]]
+  lev <- if (is.factor(cls)) levels(cls) else sort(unique(as.character(cls)))
+  if (!is.null(ccdf)) {
+    lev <- c(lev, setdiff(unique(as.character(ccdf[[class_col]])), lev))
+    ccdf[[class_col]] <- factor(as.character(ccdf[[class_col]]), levels = lev)
+  }
+  summary_df[[class_col]] <- factor(as.character(cls), levels = lev)
+
+  gg <- ggplot2::ggplot(summary_df, ggplot2::aes(x = .data[[class_col]], y = .data[[value_col]])) +
     switch(
       type,
-      box = geom_boxplot(outlier.colour = "grey4", outlier.shape = 21, outlier.size = 1.0),
-      violin = geom_violin()
-    ) +
-    scale_x_discrete(guide = guide_axis(angle = 90)) +
-    theme_bw() +
-    theme(strip.text.x = element_text(size = 14)) +
-    ylab(summary_df$metric)
+      box = ggplot2::geom_boxplot(outlier.colour = "grey4", outlier.shape = 21, outlier.size = 1.0),
+      violin = ggplot2::geom_violin()
+    )
+
+  if (!is.null(ccdf)) {
+    ccdf[[".cc_label"]] <- cc_label
+    gg <- gg +
+      ggplot2::geom_point(
+        data = ccdf,
+        ggplot2::aes(x = .data[[class_col]], y = .data[[".cc"]], colour = .data[[".cc_label"]]),
+        size = 3,
+        inherit.aes = FALSE
+      ) +
+      ggplot2::scale_colour_manual(values = stats::setNames("red", cc_label), name = NULL)
+  }
+
+  facet_layer <- if (!length(facet)) {
+    NULL
+  } else if (is.null(page)) {
+    ggplot2::facet_wrap(stats::as.formula("~ .panel"), ncol = ncol, scales = scales)
+  } else {
+    ggforce::facet_wrap_paginate(
+      stats::as.formula("~ .panel"),
+      ncol = ncol,
+      nrow = nrow,
+      page = page,
+      scales = scales
+    )
+  }
+  if (is.null(xlab)) {
+    xlab <- class_col
+  }
+  if (is.null(ylab)) {
+    ylab <- if ("metric" %in% names(summary_df)) {
+      paste(unique(summary_df[["metric"]]), collapse = ", ")
+    } else {
+      value_col
+    }
+  }
+
+  gg <- gg +
+    facet_layer +
+    ggplot2::scale_x_discrete(guide = ggplot2::guide_axis(angle = 90)) +
+    ggplot2::labs(x = xlab, y = ylab, title = title) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(strip.text.x = ggplot2::element_text(size = 14))
+  if (!is.null(ccdf)) {
+    gg <- gg + ggplot2::theme(legend.position = "bottom")
+  }
+  gg
 }
 
 #' Plot a range-of-variation envelope over time
@@ -210,6 +427,10 @@ plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
 #' each distinct combination gets its own panel and replicate envelopes never
 #' overlay ambiguously within a panel; a constant column is dropped from the panel
 #' label, and trivial data collapses to a single panel.
+#'
+#' Current-condition values passed as `cc` are drawn in each panel as a red
+#' dashed horizontal line, so the simulated range can be read against today's
+#' value; a legend labels the line.
 #'
 #' @param nrv_df A range-of-variation envelope `data.frame` from
 #'   [summarize_nrv()]. `type = "ribbon"` needs `time`, `mean`, `min`, `max`;
@@ -229,11 +450,26 @@ plot_by_class <- function(summary_df, type = c("box", "violin"), page = 1) {
 #'   [ggforce::facet_wrap_paginate()] so a large panel set is split into multiple
 #'   figures. Use [ggforce::n_pages()] on the `page = 1` result to get the page
 #'   count, then loop `page` to write one file per page.
+#' @param cc Optional current-condition values: typically the [summarize_nrv()]
+#'   envelope of the current-condition snapshot (a single replicate, so its
+#'   `mean` and `median` both equal the value), or a raw table with a `value`
+#'   column. Rows are matched to panels on the unit columns (`poly`, `class`,
+#'   `metric`, ...) that `cc` and `nrv_df` share, so `cc` may span more units
+#'   than `nrv_df` plots. A row for a unit that `nrv_df` does not plot is
+#'   dropped, so no panel is added for it, and a panel with no matching row draws
+#'   no line. Several rows for one panel are averaged. `NULL` (default) draws
+#'   none.
+#' @param cc_col Column of `cc` holding the current-condition value. `NULL`
+#'   (default) compares like with like: `"mean"` (the ribbon's line) for
+#'   `type = "ribbon"`, `"median"` (the box's middle line) for
+#'   `type = "boxplot"`, falling back to `"value"`.
+#' @param cc_label Legend label for the current-condition line.
 #'
 #' @return A `ggplot` object, or `NULL` for empty input.
 #'
 #' @importFrom rlang .data
 #' @export
+#' @seealso [plot_by_class()] for the per-class distributions.
 plot_nrv_envelope <- function(
   nrv_df,
   type = c("ribbon", "boxplot"),
@@ -242,7 +478,10 @@ plot_nrv_envelope <- function(
   title = NULL,
   ncol = 4,
   nrow = 3,
-  page = NULL
+  page = NULL,
+  cc = NULL,
+  cc_col = NULL,
+  cc_label = "current condition"
 ) {
   type <- match.arg(type)
   if (is.null(nrv_df) || !nrow(nrv_df)) {
@@ -288,6 +527,31 @@ plot_nrv_envelope <- function(
       ggplot2::geom_line(ggplot2::aes(y = .data[["mean"]]))
   }
 
+  ccPanel <- NULL
+  if (!is.null(cc) && NROW(cc)) {
+    ccPanel <- .cc_by_panel(
+      cc,
+      nrv_df,
+      keys = union(.nrv_unit_cols, facet),
+      cc_col = .cc_value_col(cc, cc_col, c(if (type == "boxplot") "median" else "mean", "value"))
+    )
+  }
+  if (!is.null(ccPanel)) {
+    ccPanel[[".cc_label"]] <- cc_label
+    gg <- gg +
+      ggplot2::geom_hline(
+        data = ccPanel,
+        ggplot2::aes(
+          yintercept = .data[[".cc"]],
+          colour = .data[[".cc_label"]],
+          linetype = .data[[".cc_label"]]
+        ),
+        linewidth = 0.8
+      ) +
+      ggplot2::scale_colour_manual(values = stats::setNames("red", cc_label), name = NULL) +
+      ggplot2::scale_linetype_manual(values = stats::setNames("dashed", cc_label), name = NULL)
+  }
+
   ## no categorical column varies -> a single series: draw one plain panel (no meaningless facet
   ## strip). Otherwise facet by the panel label, paginating when `page` is given.
   facet_layer <- if (!length(facet)) {
@@ -304,7 +568,11 @@ plot_nrv_envelope <- function(
     )
   }
 
-  gg + facet_layer + ggplot2::labs(x = "time", y = ylab, title = title) + ggplot2::theme_bw()
+  gg <- gg + facet_layer + ggplot2::labs(x = "time", y = ylab, title = title) + ggplot2::theme_bw()
+  if (!is.null(ccPanel)) {
+    gg <- gg + ggplot2::theme(legend.position = "bottom")
+  }
+  gg
 }
 
 ## collect a raw long metric table from parquet paths/root, an Arrow dataset/query, or a data.frame.

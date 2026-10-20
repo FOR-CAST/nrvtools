@@ -12,7 +12,10 @@ plot_nrv_envelope(
   title = NULL,
   ncol = 4,
   nrow = 3,
-  page = NULL
+  page = NULL,
+  cc = NULL,
+  cc_col = NULL,
+  cc_label = "current condition"
 )
 }
 \arguments{
@@ -39,6 +42,23 @@ via \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}; an integer paginate
 \code{\link[ggforce:facet_wrap_paginate]{ggforce::facet_wrap_paginate()}} so a large panel set is split into multiple
 figures. Use \code{\link[ggforce:n_pages]{ggforce::n_pages()}} on the \code{page = 1} result to get the page
 count, then loop \code{page} to write one file per page.}
+
+\item{cc}{Optional current-condition values: typically the \code{\link[=summarize_nrv]{summarize_nrv()}}
+envelope of the current-condition snapshot (a single replicate, so its
+\code{mean} and \code{median} both equal the value), or a raw table with a \code{value}
+column. Rows are matched to panels on the unit columns (\code{poly}, \code{class},
+\code{metric}, ...) that \code{cc} and \code{nrv_df} share, so \code{cc} may span more units
+than \code{nrv_df} plots. A row for a unit that \code{nrv_df} does not plot is
+dropped, so no panel is added for it, and a panel with no matching row draws
+no line. Several rows for one panel are averaged. \code{NULL} (default) draws
+none.}
+
+\item{cc_col}{Column of \code{cc} holding the current-condition value. \code{NULL}
+(default) compares like with like: \code{"mean"} (the ribbon's line) for
+\code{type = "ribbon"}, \code{"median"} (the box's middle line) for
+\code{type = "boxplot"}, falling back to \code{"value"}.}
+
+\item{cc_label}{Legend label for the current-condition line.}
 }
 \value{
 A \code{ggplot} object, or \code{NULL} for empty input.
@@ -60,4 +80,11 @@ Both facet by whichever of the requested categorical columns actually vary, so
 each distinct combination gets its own panel and replicate envelopes never
 overlay ambiguously within a panel; a constant column is dropped from the panel
 label, and trivial data collapses to a single panel.
+
+Current-condition values passed as \code{cc} are drawn in each panel as a red
+dashed horizontal line, so the simulated range can be read against today's
+value; a legend labels the line.
+}
+\seealso{
+\code{\link[=plot_by_class]{plot_by_class()}} for the per-class distributions.
 }

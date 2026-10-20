@@ -3,14 +3,11 @@
 \name{plot_over_time}
 \alias{plot_over_time}
 \alias{plot_over_time_by_class}
-\alias{plot_by_class}
 \title{NRV summary plots}
 \usage{
 plot_over_time(summary_df, ylabel, page = 1)
 
 plot_over_time_by_class(summary_df, ylabel, page = 1)
-
-plot_by_class(summary_df, type = c("box", "violin"), page = 1)
 }
 \arguments{
 \item{summary_df}{a range-of-variation summary \code{data.frame} from
@@ -20,8 +17,6 @@ plot_by_class(summary_df, type = c("box", "violin"), page = 1)
 \item{ylabel}{character, specifying the label for the y-axis}
 
 \item{page}{integer, specifying the \code{facet_wrap_paginate} page to plot.}
-
-\item{type}{character, specifying one of "box" or "violin"}
 }
 \value{
 ggplot object; invoked for side effect of plotting

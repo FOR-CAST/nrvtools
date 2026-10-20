@@ -121,3 +121,154 @@ testthat::test_that("plot_nrv_envelope draws a box-and-whisker from the five-num
     error = TRUE
   )
 })
+
+## a landscape-metric envelope over two subregions and two summary years
+new_envelope <- function(polys = c("A", "B")) {
+  data.frame(
+    time = rep(c(700, 800), length(polys)),
+    poly = rep(polys, each = 2),
+    class = NA,
+    level = "landscape",
+    metric = "ed",
+    mean = rep(c(10, 11), length(polys)),
+    min = 8,
+    q25 = 9,
+    median = rep(c(10, 11), length(polys)),
+    q75 = 12,
+    max = 13
+  )
+}
+
+## its current-condition envelope, with a subregion the simulated envelope lacks
+new_cc_envelope <- function() {
+  data.frame(
+    time = 0,
+    poly = c("A", "B", "C"),
+    class = NA,
+    level = "landscape",
+    metric = "ed",
+    mean = c(15, 25, 99),
+    median = c(14, 24, 98)
+  )
+}
+
+geom_data <- function(p, geom) {
+  l <- Filter(function(l) inherits(l$geom, geom), p$layers)
+  if (length(l)) as.data.frame(l[[1]]$data) else NULL
+}
+
+test_that("plot_nrv_envelope draws the current condition once per panel", {
+  p <- plot_nrv_envelope(new_envelope(), cc = new_cc_envelope())
+  cc <- geom_data(p, "GeomHline")
+
+  expect_equal(as.character(cc$.panel), c("A", "B"))
+  expect_equal(cc$.cc, c(15, 25))
+  expect_equal(levels(p$data$.panel), c("A", "B")) ## no panel for C
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_nrv_envelope compares the current-condition median with the boxes", {
+  p <- plot_nrv_envelope(new_envelope(), type = "boxplot", cc = new_cc_envelope())
+  expect_equal(geom_data(p, "GeomHline")$.cc, c(14, 24))
+
+  p <- plot_nrv_envelope(new_envelope(), type = "boxplot", cc = new_cc_envelope(), cc_col = "mean")
+  expect_equal(geom_data(p, "GeomHline")$.cc, c(15, 25))
+})
+
+test_that("plot_nrv_envelope matches current conditions on units that do not vary", {
+  ## one subregion -> one plain panel; the other subregions' values must not be averaged in
+  p <- plot_nrv_envelope(new_envelope("B"), cc = new_cc_envelope())
+  expect_equal(geom_data(p, "GeomHline")$.cc, 25)
+})
+
+test_that("plot_nrv_envelope applies a current condition without unit columns to every panel", {
+  p <- plot_nrv_envelope(new_envelope(), cc = data.frame(value = 5))
+  expect_equal(geom_data(p, "GeomHline")$.cc, c(5, 5))
+})
+
+test_that("plot_nrv_envelope draws no line without a current-condition value", {
+  cc <- new_cc_envelope()
+  cc$mean <- NA_real_
+  expect_null(geom_data(plot_nrv_envelope(new_envelope()), "GeomHline"))
+  expect_null(geom_data(plot_nrv_envelope(new_envelope(), cc = cc), "GeomHline"))
+  expect_null(geom_data(plot_nrv_envelope(new_envelope(), cc = cc[0, ]), "GeomHline"))
+})
+
+test_that("plot_nrv_envelope paginates with the current-condition line", {
+  polys <- sprintf("P%02d", 1:13)
+  cc <- data.frame(poly = polys, class = NA, level = "landscape", metric = "ed", mean = 1:13)
+  p <- plot_nrv_envelope(new_envelope(polys), cc = cc, page = 2)
+  expect_equal(ggforce::n_pages(p), 2)
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_nrv_envelope errors on a current condition without a value column", {
+  expect_snapshot(plot_nrv_envelope(new_envelope(), cc = data.frame(poly = "A")), error = TRUE)
+})
+
+## per-replicate values of one class-level metric: three replicates, two subregions, two classes
+new_replicate_values <- function() {
+  data.frame(
+    replicate = rep(1:3, each = 4),
+    time = 700,
+    poly = rep(c("A", "A", "B", "B"), 3),
+    class = rep(c("pine", "spruce"), 6),
+    level = "class",
+    metric = "ca",
+    value = 1:12
+  )
+}
+
+test_that("plot_by_class keeps its defaults", {
+  summary_df <- data.frame(
+    mean = 1:4,
+    poly = "polyA",
+    class = c("class1", "class2"),
+    metric = "test_metric"
+  )
+  p <- plot_by_class(summary_df)
+  expect_s3_class(p, "ggplot")
+  expect_equal(ggforce::n_pages(p), 1)
+  expect_null(plot_by_class(summary_df[0, ]))
+})
+
+test_that("plot_by_class draws current conditions per class and panel", {
+  cc <- data.frame(
+    poly = c("A", "A", "B", "C"),
+    class = c("pine", "fir", "spruce", "pine"),
+    level = "class",
+    metric = "ca",
+    value = c(100, 200, 300, 400)
+  )
+  p <- plot_by_class(new_replicate_values(), value_col = "value", cc = cc)
+  pts <- geom_data(p, "GeomPoint")
+  pts <- pts[order(pts$.panel, pts$class), ]
+
+  ## C has no panel; fir has no simulated value in A, but keeps its point
+  expect_equal(as.character(pts$.panel), c("A", "A", "B"))
+  expect_equal(as.character(pts$class), c("pine", "fir", "spruce"))
+  expect_equal(pts$.cc, c(100, 200, 300))
+  expect_equal(levels(p$data$class), c("pine", "spruce", "fir"))
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_by_class drops values that are not finite", {
+  reps <- new_replicate_values()
+  reps$value[1:2] <- c(NaN, NA)
+  p <- plot_by_class(reps, value_col = "value")
+  expect_equal(nrow(p$data), 10L)
+  expect_no_warning(ggplot2::ggplot_build(p))
+
+  reps$value <- NA_real_
+  expect_null(plot_by_class(reps, value_col = "value"))
+})
+
+test_that("plot_by_class draws every panel at once without a page", {
+  p <- plot_by_class(new_replicate_values(), "violin", page = NULL, value_col = "value")
+  expect_null(ggforce::n_pages(p))
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_by_class errors on a missing column", {
+  expect_snapshot(plot_by_class(new_replicate_values()), error = TRUE)
+})

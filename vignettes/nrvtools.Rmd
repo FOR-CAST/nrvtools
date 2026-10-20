@@ -125,8 +125,49 @@ summary, which shows the median and quartiles that the ribbon hides:
 plot_nrv_envelope(env, type = "boxplot", ylab = "patch area (ha)")
 ```
 
-For the paginated, faceted-by-reporting-unit plots used in SpaDES
-post-processing, see `plot_over_time()`, `plot_over_time_by_class()`, and
-`plot_by_class()`, which consume the same `summarize_nrv()` envelope.
+## Compare with current conditions
+
+The current condition is a single snapshot -- today's map -- so it is written
+and summarised as a replicate of its own.
+Passed as `cc`, it is drawn as a red dashed line in each panel, matched to the
+panels by subregion, class and metric:
+
+```{r current-condition}
+cc_root <- file.path(tempdir(), "nrv-demo-cc")
+unlink(cc_root, recursive = TRUE)
+
+cc <- patchAreas(make_vtm(999))
+cc$time <- 0L
+cc$poly <- "unit-A"
+write_nrv_parquet(
+  tidy_nrv_metrics(cc, studyArea = "demo", scenario = "hrv"),
+  cc_root,
+  replicate = "CC"
+)
+env_cc <- summarize_nrv(cc_root)
+
+plot_nrv_envelope(env, cc = env_cc, ylab = "patch area (ha)")
+```
+
+## Distributions by class
+
+`plot_by_class()` sets the classes side by side: a box (or violin) per class,
+a panel per reporting unit, and the current condition as a red point.
+`nrv_replicate_values()` supplies the values to draw, one per replicate and
+summary year -- a patch-level metric becomes the mean over that replicate's
+patches -- so each box spans the variation across replicates and time:
+
+```{r by-class}
+reps <- nrv_replicate_values(root)
+plot_by_class(
+  reps,
+  value_col = "value",
+  cc = nrv_replicate_values(cc_root),
+  ylab = "mean patch area (ha)"
+)
+```
+
+Both functions paginate a large panel set across figures via `page`; count the
+pages with `ggforce::n_pages()` on the first one.
 Order seral-stage classes for display with
 `factor(class, levels = seral_stages())`.

@@ -216,3 +216,74 @@ summarize_nrv <- function(x, value_col = "value", id_cols = NULL) {
   out$ci <- out$se * stats::qt(0.975, pmax(out$n_reps - 1L, 1L))
   out
 }
+
+#' Collapse raw metrics to one value per replicate and summary year
+#'
+#' Returns the values whose distribution [plot_by_class()] draws: one per
+#' replicate, summary year and unit. Class- and landscape-level metrics already
+#' hold one value per replicate, summary year and unit, and pass through
+#' unchanged. A patch-level metric holds one value per patch, and becomes the
+#' mean over that replicate's patches. On a parquet dataset the reduction is
+#' pushed down to Arrow, so the per-patch rows are never collected into R.
+#'
+#' @param x Raw per-replicate values: parquet paths / roots (see
+#'   [open_nrv_dataset()]), an Arrow `Dataset` / query, or a `data.frame`.
+#' @param value_col Name of the value column (default `"value"`).
+#' @param id_cols Grouping columns; `NULL` (default) uses those present among
+#'   `studyArea`, `scenario`, `rptPoly`, `replicate`, `rep`, `time`, `poly`,
+#'   `class`, `level`, `metric`, `metric.1`.
+#'
+#' @return A `data.frame` with the `id_cols`, `n` (the number of rows each value
+#'   collapses: the patch count for a patch-level metric, otherwise 1) and the
+#'   per-replicate mean in `value_col`; zero rows if there is no data.
+#'
+#' @export
+#' @seealso [summarize_nrv()] for the across-replicate envelope.
+nrv_replicate_values <- function(x, value_col = "value", id_cols = NULL) {
+  ds <- if (is.data.frame(x) || inherits(x, c("Dataset", "arrow_dplyr_query"))) {
+    x
+  } else {
+    open_nrv_dataset(x)
+  }
+  if (is.null(ds)) {
+    return(data.frame())
+  }
+  cols <- names(ds)
+  if (!value_col %in% cols) {
+    stop(
+      "nrv_replicate_values(): value column '",
+      value_col,
+      "' not in data (have: ",
+      paste(cols, collapse = ", "),
+      ")",
+      call. = FALSE
+    )
+  }
+  if (is.null(id_cols)) {
+    id_cols <- intersect(
+      c(
+        "studyArea",
+        "scenario",
+        "rptPoly",
+        "replicate",
+        "rep",
+        "time",
+        "poly",
+        "class",
+        "level",
+        "metric",
+        "metric.1"
+      ),
+      cols
+    )
+  }
+  id_cols <- setdiff(id_cols, value_col)
+  vsym <- rlang::sym(value_col)
+  out <- ds |>
+    dplyr::group_by(!!!rlang::syms(id_cols)) |>
+    dplyr::summarise(n = dplyr::n(), .value = mean(!!vsym, na.rm = TRUE), .groups = "drop") |>
+    dplyr::collect()
+  out <- as.data.frame(out)
+  names(out)[names(out) == ".value"] <- value_col
+  out
+}

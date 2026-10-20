@@ -68,6 +68,62 @@ test_that("summarize_nrv errors on a missing value column", {
   expect_snapshot(summarize_nrv(root, value_col = "nope"), error = TRUE)
 })
 
+## one replicate: two summary years of a patch-level metric (3 then 2 patches) and a class-level one
+new_replicate <- function(r) {
+  rbind(
+    data.frame(
+      time = c(0, 0, 0, 50, 50),
+      poly = "A",
+      class = "pine",
+      level = "patch",
+      metric = "area",
+      value = c(1, 2, 3, 10, 20) * r
+    ),
+    data.frame(
+      time = c(0, 50),
+      poly = "A",
+      class = "pine",
+      level = "class",
+      metric = "ca",
+      value = c(6, 30) * r
+    )
+  )
+}
+
+test_that("nrv_replicate_values collapses patches to a per-replicate mean", {
+  root <- withr::local_tempdir()
+  for (r in 1:2) {
+    write_nrv_parquet(new_replicate(r), root, r)
+  }
+  v <- nrv_replicate_values(root)
+  v <- v[order(v$metric, v$replicate, v$time), ]
+
+  expect_named(v, c("replicate", "time", "poly", "class", "level", "metric", "n", "value"))
+  expect_equal(nrow(v), 8L) ## 2 replicates x 2 years x 2 metrics
+  area <- v[v$metric == "area", ]
+  expect_equal(area$value, c(2, 15, 4, 30))
+  expect_equal(area$n, c(3, 2, 3, 2))
+  ca <- v[v$metric == "ca", ]
+  expect_equal(ca$value, c(6, 30, 12, 60))
+  expect_equal(ca$n, rep(1, 4))
+})
+
+test_that("nrv_replicate_values reads a data.frame the same way", {
+  df <- new_replicate(1)
+  df$replicate <- 1L
+  v <- nrv_replicate_values(df)
+  expect_equal(v$value[v$metric == "area"], c(2, 15))
+  expect_equal(nrow(nrv_replicate_values(df, id_cols = "metric")), 2L)
+})
+
+test_that("nrv_replicate_values returns an empty frame without data", {
+  expect_equal(nrow(nrv_replicate_values(withr::local_tempdir())), 0L)
+})
+
+test_that("nrv_replicate_values errors on a missing value column", {
+  expect_snapshot(nrv_replicate_values(new_replicate(1), value_col = "nope"), error = TRUE)
+})
+
 test_that("tidy_nrv_metrics binds a metric list, drops empties, stamps ids", {
   metric_list <- list(
     lsm_l_ed = data.frame(level = "landscape", metric = "ed", value = 1:2, rep = 1L, time = 0),

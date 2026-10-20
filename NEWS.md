@@ -1,3 +1,9 @@
+# nrvtools (development version)
+
+- `nrv_replicate_values()` (new) collapses raw metrics to one value per replicate, summary year and unit: the values whose distribution `plot_by_class()` draws. Class- and landscape-level metrics pass through unchanged; a patch-level metric becomes the mean over that replicate's patches. On a parquet dataset the reduction runs in Arrow, so the per-patch rows are never collected into R.
+- `plot_by_class()` draws current-condition values (`cc`) as red points, one per class and panel. A class that has a current-condition value but no simulated value in a panel keeps its point, which then stands without a box. It also gains `value_col` (to plot per-replicate values rather than an envelope's means), `class_col`, `facet`, `ncol`/`nrow`, `scales`, axis labels and `title`, and `page = NULL` draws every panel in one figure. Values that are not finite (an undefined metric, such as the standard deviation of a single patch) are dropped before plotting, where ggplot2 dropped them with a warning on every figure. `type` now defaults to `"box"`; leaving it out was an error. Called as before, it draws the same figure.
+- `plot_nrv_envelope()` draws current-condition values (`cc`) as a red dashed line in each panel, labelled in a legend. Rows are matched to panels on the subregion, class and metric columns that both tables carry, so one current-condition envelope can serve every figure of a reporting layer; a value for a unit the figure does not plot is dropped. The line is the current-condition mean for `type = "ribbon"` and its median for `type = "boxplot"`, to match the line or box it is read against (`cc_col` overrides).
+
 # nrvtools 0.3.4
 
 ## Bug fix
