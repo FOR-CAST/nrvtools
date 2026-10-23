@@ -115,19 +115,27 @@ utils::globalVariables(c(
 #'
 #' Reproduces the v2 "Leading vegetation by age class" boxplot for a single
 #' reporting unit (subregion x species): horizontal box-and-whiskers of the
-#' across-replicate proportion of forest area in each age class, with the
-#' current-condition proportion marked as a red dot. Built with \pkg{ggplot2}
-#' (the v2 original used base graphics).
+#' across-replicate proportion of the type's forest (the pixels it leads) in each
+#' age class, which sums to 1 across the age classes, with the current-condition
+#' proportion marked as a red circle; the circle is hollow, so simulated values
+#' at the same place stay visible. For `"All species"` it is the proportion of
+#' the forest in each age class. Built with \pkg{ggplot2} (the v2 original used
+#' base graphics).
 #'
 #' @param df A `data.frame` of the raw per-replicate values for one unit, with an
 #'   age-class column (`class_col`) and a proportion column (`value_col`); one row
 #'   per replicate x summary-year x age class.
 #' @param cc Optional `data.frame` of current-condition values (same columns as
-#'   `df`), one value per age class, drawn as red dots. `NULL` omits them.
+#'   `df`), one value per age class, drawn as red circles. `NULL` omits them.
 #' @param ageClasses Age-class labels in order young -> old; the y-axis is drawn
-#'   bottom (`Young`) to top (`Old`). Default `c("Young","Immature","Mature","Old")`.
+#'   top (`Young`) to bottom (`Old`). Default `c("Young","Immature","Mature","Old")`.
 #' @param value_col,class_col Column names for the proportion and age class.
-#' @param xlab,title Axis label and plot title.
+#' @param species_col Column naming the vegetation type, used for the default
+#'   `xlab`.
+#' @param xlab Axis label. `NULL` (default) names the type in `species_col`:
+#'   "Proportion of `<type>`-leading forest area", or "Proportion of forest area"
+#'   for `"All species"`.
+#' @param title Plot title.
 #' @param caption Optional caption, rendered bottom-right below the figure (e.g.
 #'   the subregion's total forested area). `NULL` omits it.
 #'
@@ -142,12 +150,16 @@ plot_leading_boxplot <- function(
   ageClasses = c("Young", "Immature", "Mature", "Old"),
   value_col = "value",
   class_col = "class",
-  xlab = "Proportion of forest area",
+  species_col = "metric.1",
+  xlab = NULL,
   title = NULL,
   caption = NULL
 ) {
   if (is.null(df) || !nrow(df)) {
     return(invisible(NULL))
+  }
+  if (is.null(xlab)) {
+    xlab <- .leading_xlab(unique(df[[species_col]]))
   }
   df[[class_col]] <- factor(df[[class_col]], levels = rev(ageClasses))
   gg <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[value_col]], y = .data[[class_col]])) +
@@ -158,15 +170,34 @@ plot_leading_boxplot <- function(
 
   if (!is.null(cc) && nrow(cc)) {
     cc[[class_col]] <- factor(cc[[class_col]], levels = rev(ageClasses))
-    gg <- gg +
-      ggplot2::geom_point(
-        data = cc,
-        ggplot2::aes(x = .data[[value_col]], y = .data[[class_col]]),
-        colour = "red",
-        size = 4
-      )
+    gg <- gg + .cc_circles(cc, value_col, class_col, size = 4)
   }
   gg
+}
+
+## x-axis label of a leading-type boxplot: the share of one type's forest in each age class
+.leading_xlab <- function(type) {
+  if (length(type) != 1L || is.na(type)) {
+    "Proportion of the type's forest area"
+  } else if (identical(type, "All species")) {
+    "Proportion of forest area"
+  } else {
+    paste0("Proportion of ", gsub("_", " ", type), "-leading forest area")
+  }
+}
+
+## the current condition as hollow red circles, so a simulated value (box or outlier) at the same
+## place stays visible
+.cc_circles <- function(cc, value_col, y_col, size) {
+  ggplot2::geom_point(
+    data = cc,
+    ggplot2::aes(x = .data[[value_col]], y = .data[[y_col]]),
+    shape = 21,
+    colour = "red",
+    fill = NA,
+    stroke = 1.5,
+    size = size
+  )
 }
 
 #' Leading-vegetation shares of the forest, by species and age class
@@ -177,11 +208,11 @@ plot_leading_boxplot <- function(
 #' `"leadingShare"` metric of [leadingVegByAgeClass()]). Every box has the same
 #' denominator, so a class that leads on little of the forest has a small share,
 #' where its proportions by age class ([plot_leading_boxplot()]) swing between 0
-#' and 1. Current-condition shares are drawn as red dots.
+#' and 1. Current-condition shares are drawn as hollow red circles.
 #'
 #' Classes are ordered by their mean simulated share, the largest at the top. A
 #' class that is 0 in every simulated and current-condition row is left out; one
-#' with current-condition values only keeps its row and its dots.
+#' with current-condition values only keeps its row and its circles.
 #'
 #' @param df A `data.frame` of the raw per-replicate values for one subregion,
 #'   with age-class (`class_col`), vegetation-class (`species_col`) and share
@@ -189,7 +220,7 @@ plot_leading_boxplot <- function(
 #'   vegetation class. A replicate-year in which a class leads nowhere should
 #'   hold a 0 rather than be missing.
 #' @param cc Optional `data.frame` of current-condition values (same columns as
-#'   `df`), drawn as red dots. `NULL` omits them.
+#'   `df`), drawn as hollow red circles. `NULL` omits them.
 #' @param ageClasses Age-class labels in order young -> old (panel order).
 #' @param value_col,class_col,species_col Column names for the share, the age
 #'   class and the vegetation class.
@@ -262,13 +293,7 @@ plot_leading_share <- function(
     cc <- cc[cc[[species_col]] %in% lev, , drop = FALSE]
     cc[[species_col]] <- factor(cc[[species_col]], levels = lev)
     cc[[class_col]] <- factor(cc[[class_col]], levels = ageClasses)
-    gg <- gg +
-      ggplot2::geom_point(
-        data = cc,
-        ggplot2::aes(x = .data[[value_col]], y = .data[[species_col]]),
-        colour = "red",
-        size = 3
-      )
+    gg <- gg + .cc_circles(cc, value_col, species_col, size = 3)
   }
   gg
 }

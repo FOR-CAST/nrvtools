@@ -10,7 +10,8 @@ plot_leading_boxplot(
   ageClasses = c("Young", "Immature", "Mature", "Old"),
   value_col = "value",
   class_col = "class",
-  xlab = "Proportion of forest area",
+  species_col = "metric.1",
+  xlab = NULL,
   title = NULL,
   caption = NULL
 )
@@ -21,14 +22,21 @@ age-class column (\code{class_col}) and a proportion column (\code{value_col}); 
 per replicate x summary-year x age class.}
 
 \item{cc}{Optional \code{data.frame} of current-condition values (same columns as
-\code{df}), one value per age class, drawn as red dots. \code{NULL} omits them.}
+\code{df}), one value per age class, drawn as red circles. \code{NULL} omits them.}
 
 \item{ageClasses}{Age-class labels in order young -> old; the y-axis is drawn
-bottom (\code{Young}) to top (\code{Old}). Default \code{c("Young","Immature","Mature","Old")}.}
+top (\code{Young}) to bottom (\code{Old}). Default \code{c("Young","Immature","Mature","Old")}.}
 
 \item{value_col, class_col}{Column names for the proportion and age class.}
 
-\item{xlab, title}{Axis label and plot title.}
+\item{species_col}{Column naming the vegetation type, used for the default
+\code{xlab}.}
+
+\item{xlab}{Axis label. \code{NULL} (default) names the type in \code{species_col}:
+"Proportion of \verb{<type>}-leading forest area", or "Proportion of forest area"
+for \code{"All species"}.}
+
+\item{title}{Plot title.}
 
 \item{caption}{Optional caption, rendered bottom-right below the figure (e.g.
 the subregion's total forested area). \code{NULL} omits it.}
@@ -39,9 +47,12 @@ A \code{ggplot} object (\code{NULL} for empty input).
 \description{
 Reproduces the v2 "Leading vegetation by age class" boxplot for a single
 reporting unit (subregion x species): horizontal box-and-whiskers of the
-across-replicate proportion of forest area in each age class, with the
-current-condition proportion marked as a red dot. Built with \pkg{ggplot2}
-(the v2 original used base graphics).
+across-replicate proportion of the type's forest (the pixels it leads) in each
+age class, which sums to 1 across the age classes, with the current-condition
+proportion marked as a red circle; the circle is hollow, so simulated values
+at the same place stay visible. For \code{"All species"} it is the proportion of
+the forest in each age class. Built with \pkg{ggplot2} (the v2 original used
+base graphics).
 }
 \seealso{
 \code{\link[=plot_largepatch_histogram]{plot_largepatch_histogram()}}, \code{\link[=leadingVegByAgeClass]{leadingVegByAgeClass()}}

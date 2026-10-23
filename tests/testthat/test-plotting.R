@@ -491,3 +491,46 @@ test_that("plot_leading_share labels species and takes a title and caption", {
   expect_equal(b$plot$labels$title, "Zone 1")
   expect_equal(b$plot$labels$caption, "Total forested area: 10 ha")
 })
+
+## per-replicate proportions of one type's forest by age class, as leadingVegByAgeClass() gives them
+new_leading_props <- function(type = "Wh_Spruce") {
+  d <- expand.grid(
+    rep = 1:5,
+    class = c("Young", "Immature", "Mature", "Old"),
+    stringsAsFactors = FALSE
+  )
+  d$value <- ifelse(d$class == "Old", 1, 0)
+  d$metric.1 <- type
+  d$metric <- "leadingProp"
+  d
+}
+
+test_that("plot_leading_boxplot names the type whose forest the proportions are of", {
+  expect_equal(
+    plot_leading_boxplot(new_leading_props())$labels$x,
+    "Proportion of Wh Spruce-leading forest area"
+  )
+  expect_equal(
+    plot_leading_boxplot(new_leading_props("All species"))$labels$x,
+    "Proportion of forest area"
+  )
+  expect_equal(plot_leading_boxplot(new_leading_props(), xlab = "Share")$labels$x, "Share")
+  expect_null(plot_leading_boxplot(new_leading_props()[0, ]))
+})
+
+test_that("the leading plots draw the current condition as hollow red circles", {
+  cc <- data.frame(class = "Old", metric.1 = "Wh_Spruce", value = 1)
+  ccShare <- data.frame(class = "Old", metric.1 = "Pine", value = 0.3)
+  for (p in list(
+    plot_leading_boxplot(new_leading_props(), cc = cc),
+    plot_leading_share(new_leading_shares(), cc = ccShare)
+  )) {
+    pt <- p$layers[[length(p$layers)]]
+    expect_s3_class(pt$geom, "GeomPoint")
+    expect_equal(
+      pt$aes_params[c("shape", "colour", "fill")],
+      list(shape = 21, colour = "red", fill = NA)
+    )
+    expect_no_error(ggplot2::ggplot_build(p))
+  }
+})

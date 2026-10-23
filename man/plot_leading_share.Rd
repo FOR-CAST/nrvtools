@@ -26,7 +26,7 @@ vegetation class. A replicate-year in which a class leads nowhere should
 hold a 0 rather than be missing.}
 
 \item{cc}{Optional \code{data.frame} of current-condition values (same columns as
-\code{df}), drawn as red dots. \code{NULL} omits them.}
+\code{df}), drawn as hollow red circles. \code{NULL} omits them.}
 
 \item{ageClasses}{Age-class labels in order young -> old (panel order).}
 
@@ -51,12 +51,12 @@ across-replicate share of the subregion's forested area (the
 \code{"leadingShare"} metric of \code{\link[=leadingVegByAgeClass]{leadingVegByAgeClass()}}). Every box has the same
 denominator, so a class that leads on little of the forest has a small share,
 where its proportions by age class (\code{\link[=plot_leading_boxplot]{plot_leading_boxplot()}}) swing between 0
-and 1. Current-condition shares are drawn as red dots.
+and 1. Current-condition shares are drawn as hollow red circles.
 }
 \details{
 Classes are ordered by their mean simulated share, the largest at the top. A
 class that is 0 in every simulated and current-condition row is left out; one
-with current-condition values only keeps its row and its dots.
+with current-condition values only keeps its row and its circles.
 }
 \seealso{
 \code{\link[=plot_leading_boxplot]{plot_leading_boxplot()}}, \code{\link[=leadingVegByAgeClass]{leadingVegByAgeClass()}}
