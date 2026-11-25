@@ -534,3 +534,51 @@ test_that("the leading plots draw the current condition as hollow red circles", 
     expect_no_error(ggplot2::ggplot_build(p))
   }
 })
+
+## three replicates of the new_envelope() series, per subregion and summary year
+new_replicates <- function(polys = c("A", "B")) {
+  d <- expand.grid(rep = sprintf("rep%02d", 1:3), time = c(700, 800), poly = polys)
+  d$class <- NA
+  d$level <- "landscape"
+  d$metric <- "ed"
+  d$value <- 9 + as.integer(factor(d$rep)) + (d$time - 700) / 100
+  d
+}
+
+layer_classes <- function(p) {
+  unname(vapply(p$layers, function(l) class(l$geom)[1], character(1)))
+}
+
+test_that("plot_nrv_envelope(type = 'lines') draws replicate and median lines, no ribbon", {
+  p <- plot_nrv_envelope(new_envelope(), type = "lines", reps_df = new_replicates())
+  expect_s3_class(p, "ggplot")
+  expect_equal(sum(layer_classes(p) == "GeomRibbon"), 0L)
+  expect_equal(sum(layer_classes(p) == "GeomLine"), 2L)
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_nrv_envelope(type = 'lines') needs reps_df", {
+  expect_error(plot_nrv_envelope(new_envelope(), type = "lines"), "reps_df")
+})
+
+test_that("plot_nrv_envelope(type = 'lines') draws a line per replicate and the median", {
+  p <- plot_nrv_envelope(new_envelope(), type = "lines", reps_df = new_replicates())
+  b <- ggplot2::ggplot_build(p)
+  reps <- ggplot2::layer_data(p, which(layer_classes(p) == "GeomLine")[1])
+  med <- ggplot2::layer_data(p, which(layer_classes(p) == "GeomLine")[2])
+  ## one group per replicate in each of the two panels
+  expect_equal(length(unique(reps$group[reps$PANEL == 1])), 3L)
+  expect_equal(length(unique(reps$group[reps$PANEL == 2])), 3L)
+  expect_equal(nrow(reps), 12L)
+  expect_equal(med$y, new_envelope()$median)
+  expect_gt(med$linewidth[1], reps$linewidth[1])
+})
+
+test_that("plot_nrv_envelope keeps its ribbon layers and data", {
+  p <- plot_nrv_envelope(new_envelope())
+  expect_equal(layer_classes(p), c("GeomRibbon", "GeomLine"))
+  expect_equal(ggplot2::layer_data(p, 1)$ymin, rep(8, 4))
+  expect_equal(ggplot2::layer_data(p, 1)$ymax, rep(13, 4))
+  expect_equal(ggplot2::layer_data(p, 2)$y, c(10, 11, 10, 11))
+  expect_equal(levels(p$data$.panel), c("A", "B"))
+})
