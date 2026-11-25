@@ -99,7 +99,8 @@ read_cohort_data <- function(x, cols = NULL) {
     stop("read_cohort_data(): `x` must be a `.parquet` or `.qs2` file: ", x, call. = FALSE)
   }
   out <- data.table::as.data.table(out)
-  data.table::setalloccol(out)
+  out <- data.table::setalloccol(out)
+  out
 }
 
 .checkCohortCols <- function(cols, have, x) {

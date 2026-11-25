@@ -94,6 +94,7 @@ testthat::test_that("read_cohort_data() returns a data.table that := works on", 
 
   for (f in c(p, q)) {
     for (cols in list(NULL, c("B", "age"))) {
+      testthat::expect_visible(read_cohort_data(f, cols = cols))
       out <- read_cohort_data(f, cols = cols)
       testthat::expect_true(data.table::is.data.table(out))
       testthat::expect_no_warning(out[, newCol := B * 2L])
