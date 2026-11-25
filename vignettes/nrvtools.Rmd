@@ -113,7 +113,7 @@ smallest patch to the largest.
 
 ## Plot the envelope
 
-`plot_nrv_envelope()` faces by whichever categorical columns vary and offers two
+`plot_nrv_envelope()` faces by whichever categorical columns vary and offers three
 styles.
 The default `"ribbon"` draws the across-replicate mean with a min--max ribbon:
 
@@ -127,6 +127,10 @@ summary, which shows the median and quartiles that the ribbon hides:
 ```{r plot-boxplot}
 plot_nrv_envelope(env, type = "boxplot", ylab = "patch area (ha)")
 ```
+
+`type = "lines"` draws each replicate as a thin grey line under a bold median
+line; pass the replicates' own values (such as from `nrv_replicate_values()`)
+as `reps_df`.
 
 ## Compare with current conditions
 
