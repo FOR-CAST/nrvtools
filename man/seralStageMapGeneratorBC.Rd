@@ -15,7 +15,7 @@ writeSeralStageMapBC(
 )
 }
 \arguments{
-\item{cd}{character, specifying the file path to a \code{cohortData} object (\code{.qs2} or \code{.rds})}
+\item{cd}{character, specifying the file path to a \code{cohortData} object (a \code{.qs2} or \code{.parquet} file, as written by \code{\link[=write_cohort_parquet]{write_cohort_parquet()}})}
 
 \item{pgm}{character, specifying the file path to a \code{pixelGroupMap} raster (\code{.tif})}
 
@@ -47,7 +47,7 @@ paste0("https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry
 "natural-resource-use/land-water-use/crown-land/land-use-plans-and-objectives/"
 "cariboo-region/cariboochilcotin-rlup/update_note_3.pdf")
 
-Reading \code{cd} requires the suggested package \pkg{qs2}.
+Reading a \code{.qs2} \code{cd} requires the suggested package \pkg{qs2}.
 }
 \examples{
 \dontrun{

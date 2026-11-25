@@ -224,3 +224,49 @@ testthat::test_that("seralStageMapGeneratorBC() classifies plain and categorical
   testthat::expect_identical(classes(write_map(relabelled, "relabelled")), expected)
   testthat::expect_identical(classes(write_map(identity, "identity")), expected)
 })
+
+testthat::test_that("writeSeralStageMapBC() writes identical maps from .qs2 and parquet cohorts", {
+  testthat::skip_if_not_installed("qs2")
+  tmp <- withr::local_tempdir()
+
+  groups <- matrix(c(1, 1, 2, 2, 3, 1, 1, 2, 2, 3, 4, 4, 5, 5, 3), nrow = 3, byrow = TRUE)
+  template <- terra::rast(nrows = 3, ncols = 5, xmin = 0, xmax = 500, ymin = 0, ymax = 300)
+  terra::crs(template) <- "EPSG:3005"
+  pgm_f <- file.path(tmp, "pixelGroupMap.tif")
+  terra::writeRaster(terra::rast(template, vals = as.vector(t(groups))), pgm_f, datatype = "INT4U")
+
+  ndtbec <- sf::st_sf(
+    NDTBEC = c("NDT3_SBS", "NDT4_IDF"),
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(0, 0), c(300, 0), c(300, 300), c(0, 300), c(0, 0)))),
+      sf::st_polygon(list(rbind(c(300, 0), c(500, 0), c(500, 300), c(300, 300), c(300, 0)))),
+      crs = 3005
+    )
+  )
+  ndtbec_f <- file.path(tmp, "ndtbec.gpkg")
+  sf::st_write(ndtbec, ndtbec_f, quiet = TRUE)
+
+  cd <- data.table::data.table(
+    pixelGroup = c(1L, 2L, 2L, 3L, 4L, 5L),
+    speciesCode = factor(
+      c("Pice_gla", "Pseu_men", "Pinu_con", "Pinu_con", "Popu_tre", "Pseu_men"),
+      levels = c("Pseu_men", "Pinu_con", "Pice_gla", "Popu_tre")
+    ),
+    age = c(20L, 260L, 260L, 120L, 60L, 150L),
+    B = c(1000L, 3000L, 500L, 2000L, 800L, 2000L)
+  )
+  qs_f <- file.path(tmp, "cohortData.qs2")
+  qs2::qs_save(cd, qs_f)
+  pq_f <- write_cohort_parquet(cd, file.path(tmp, "cd"), 100)
+
+  out_qs <- file.path(tmp, "ssm_qs2.tif")
+  out_pq <- file.path(tmp, "ssm_parquet.tif")
+  writeSeralStageMapBC(qs_f, pgm_f, ndtbec_f, ssm = out_qs)
+  writeSeralStageMapBC(pq_f, pgm_f, ndtbec_f, ssm = out_pq)
+
+  a <- terra::rast(out_qs)
+  b <- terra::rast(out_pq)
+  testthat::expect_identical(terra::values(a, mat = FALSE), terra::values(b, mat = FALSE))
+  testthat::expect_identical(terra::cats(a)[[1]], terra::cats(b)[[1]])
+  testthat::expect_true(any(!is.na(terra::values(b, mat = FALSE))))
+})

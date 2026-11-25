@@ -53,7 +53,7 @@ utils::globalVariables(c(
 #' @return seral stage map (`SpatRaster`)
 #'
 #' @details
-#' Reading `cd` requires the suggested package \pkg{qs2}.
+#' Reading a `.qs2` `cd` requires the suggested package \pkg{qs2}.
 #'
 #' @export
 #' @rdname seralStageMapGeneratorBC
@@ -65,15 +65,13 @@ utils::globalVariables(c(
 #' }
 #' }
 seralStageMapGeneratorBC <- function(cd, pgm, ndtbec) {
-  rlang::check_installed("qs2", reason = "to read `cd`.")
-
   fndtbec <- ndtbec
   stopifnot(
     is.character(cd) && file.exists(cd),
     is.character(pgm) && file.exists(pgm),
     is.character(fndtbec) && file.exists(fndtbec)
   )
-  cohortData <- qs2::qs_read(cd)
+  cohortData <- read_cohort_data(cd)
   pixelGroupMap <- terra::rast(pgm)
   NDTBEC <- sf::st_read(fndtbec, quiet = TRUE)
 
