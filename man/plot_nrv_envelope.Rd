@@ -6,7 +6,8 @@
 \usage{
 plot_nrv_envelope(
   nrv_df,
-  type = c("ribbon", "boxplot"),
+  type = c("ribbon", "boxplot", "lines"),
+  reps_df = NULL,
   facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   ylab = "value",
   title = NULL,
@@ -26,8 +27,16 @@ plot_nrv_envelope(
 \code{type = "boxplot"} needs \code{time}, \code{min}, \code{q25}, \code{median}, \code{q75}, \code{max}. \code{NULL}
 or a zero-row input returns \code{NULL}.}
 
-\item{type}{Plot style: \code{"ribbon"} (mean line + min--max ribbon) or
-\code{"boxplot"} (box-and-whisker showing median and quartiles).}
+\item{type}{Plot style: \code{"ribbon"} (mean line + min--max ribbon),
+\code{"boxplot"} (box-and-whisker showing median and quartiles) or \code{"lines"}
+(one thin grey line per replicate, from \code{reps_df}, under a bold median line
+from \code{nrv_df}; no ribbon).}
+
+\item{reps_df}{Per-replicate values, required for \code{type = "lines"} and ignored
+otherwise: a \code{data.frame} with \code{rep} (one line per value), \code{time} and
+\code{value}, and the same faceting columns as \code{nrv_df}, such as the result of
+\code{\link[=nrv_replicate_values]{nrv_replicate_values()}}. \code{type = "lines"} also needs the column \code{median}
+in \code{nrv_df}.}
 
 \item{facet}{Candidate faceting columns; those present and varying are combined
 into the panel label (default \code{c("rptPoly", "poly", "class", "metric", "metric.1")}; \code{rptPoly} is the reporting polygon LAYER, \code{poly} the subregion

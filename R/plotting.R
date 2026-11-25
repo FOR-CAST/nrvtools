@@ -630,8 +630,15 @@ plot_by_class <- function(
 #'   [summarize_nrv()]. `type = "ribbon"` needs `time`, `mean`, `min`, `max`;
 #'   `type = "boxplot"` needs `time`, `min`, `q25`, `median`, `q75`, `max`. `NULL`
 #'   or a zero-row input returns `NULL`.
-#' @param type Plot style: `"ribbon"` (mean line + min--max ribbon) or
-#'   `"boxplot"` (box-and-whisker showing median and quartiles).
+#' @param type Plot style: `"ribbon"` (mean line + min--max ribbon),
+#'   `"boxplot"` (box-and-whisker showing median and quartiles) or `"lines"`
+#'   (one thin grey line per replicate, from `reps_df`, under a bold median line
+#'   from `nrv_df`; no ribbon).
+#' @param reps_df Per-replicate values, required for `type = "lines"` and ignored
+#'   otherwise: a `data.frame` with `rep` (one line per value), `time` and
+#'   `value`, and the same faceting columns as `nrv_df`, such as the result of
+#'   [nrv_replicate_values()]. `type = "lines"` also needs the column `median`
+#'   in `nrv_df`.
 #' @param facet Candidate faceting columns; those present and varying are combined
 #'   into the panel label (default `c("rptPoly", "poly", "class", "metric",
 #'   "metric.1")`; `rptPoly` is the reporting polygon LAYER, `poly` the subregion
@@ -677,7 +684,8 @@ plot_by_class <- function(
 #' @seealso [plot_by_class()] for the per-class distributions.
 plot_nrv_envelope <- function(
   nrv_df,
-  type = c("ribbon", "boxplot"),
+  type = c("ribbon", "boxplot", "lines"),
+  reps_df = NULL,
   facet = c("rptPoly", "poly", "class", "metric", "metric.1"),
   ylab = "value",
   title = NULL,
@@ -691,6 +699,13 @@ plot_nrv_envelope <- function(
   caption = NULL
 ) {
   type <- match.arg(type)
+  if (type == "lines" && is.null(reps_df)) {
+    stop(
+      "plot_nrv_envelope(type = \"lines\") needs `reps_df`, the per-replicate values ",
+      "(columns rep, time, value and the facet columns)",
+      call. = FALSE
+    )
+  }
   if (is.null(nrv_df) || !nrow(nrv_df)) {
     return(invisible(NULL))
   }
@@ -725,6 +740,36 @@ plot_nrv_envelope <- function(
         ),
         stat = "identity"
       )
+  } else if (type == "lines") {
+    miss <- setdiff(c("rep", "time", "value"), names(reps_df))
+    if (length(miss)) {
+      stop(
+        "plot_nrv_envelope(type = \"lines\") needs `reps_df` column(s): ",
+        paste(miss, collapse = ", "),
+        call. = FALSE
+      )
+    }
+    if (!"median" %in% names(nrv_df)) {
+      stop(
+        "plot_nrv_envelope(type = \"lines\") needs the column median in `nrv_df` ",
+        "(produce it with summarize_nrv())",
+        call. = FALSE
+      )
+    }
+    ## the replicates carry the same panel label as the envelope, built from the same columns
+    reps_df[[".panel"]] <- if (length(facet)) {
+      factor(as.character(.panel_factor(reps_df, facet)), levels = levels(nrv_df[[".panel"]]))
+    } else {
+      "all"
+    }
+    gg <- ggplot2::ggplot(nrv_df, ggplot2::aes(x = .data[["time"]])) +
+      ggplot2::geom_line(
+        data = reps_df,
+        ggplot2::aes(y = .data[["value"]], group = .data[["rep"]]),
+        colour = "grey60",
+        linewidth = 0.3
+      ) +
+      ggplot2::geom_line(ggplot2::aes(y = .data[["median"]]), linewidth = 1)
   } else {
     gg <- ggplot2::ggplot(nrv_df, ggplot2::aes(x = .data[["time"]])) +
       ggplot2::geom_ribbon(
