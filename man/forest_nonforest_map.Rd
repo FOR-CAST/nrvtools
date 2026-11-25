@@ -36,7 +36,10 @@ non-forest in \code{nonForest}. Every other pixel is \strong{forest}. Pixels out
 \details{
 nrvtools does not compute stand age. Pass the map the simulation's own stand-age output uses, such as
 \code{LandR::standAgeMapGenerator()} (biomass-weighted age of the cohorts of each pixel).
+
+The map is a classified raster like any other: \code{\link[=nrv_metrics_landscape]{nrv_metrics_landscape()}} with \code{funList = "lsm_c_ed"}
+gives its edge density (class \code{1}, the forest, in m/ha).
 }
 \seealso{
-\code{\link[=nrv_forest_edge_density]{nrv_forest_edge_density()}}
+\code{\link[=nrv_metrics_landscape]{nrv_metrics_landscape()}}
 }

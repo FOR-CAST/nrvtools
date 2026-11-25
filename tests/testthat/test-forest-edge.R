@@ -43,50 +43,30 @@ test_that("forest_nonforest_map reads the age map from a file", {
   )
 })
 
-test_that("nrv_forest_edge_density gives the edge length per hectare, in nrv_metrics_landscape's format", {
+test_that("nrv_metrics_landscape(lsm_c_ed) on the map gives the forest edge length per hectare", {
   d <- withr::local_tempdir()
-  f <- file.path(d, "rep01", "forestMap_year0000.tif")
-  dir.create(dirname(f))
-  m <- forest_nonforest_map(.fnf_halves())
-  terra::writeRaster(m, f, datatype = "INT1U")
-  polys <- sf::st_as_sf(data.frame(Name = c("all", "left", "right")), geometry = sf::st_sfc(
+  edge <- function(age, rep, time) {
+    f <- file.path(d, rep, sprintf("forestMap_year%04d.tif", time))
+    dir.create(dirname(f), showWarnings = FALSE)
+    terra::writeRaster(forest_nonforest_map(age), f, datatype = "INT1U")
+    f
+  }
+  polys <- sf::st_as_sf(data.frame(Name = c("all", "left")), geometry = sf::st_sfc(
     sf::st_polygon(list(rbind(c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0)))),
     sf::st_polygon(list(rbind(c(0, 0), c(20, 0), c(20, 40), c(0, 40), c(0, 0)))),
-    sf::st_polygon(list(rbind(c(20, 0), c(40, 0), c(40, 40), c(20, 40), c(20, 0)))),
     crs = "EPSG:32611"
   ))
-
-  out <- nrv_forest_edge_density(f, polys, "Name")
-
-  ref <- nrv_metrics_landscape(polys, "Name", f, funList = list("lsm_l_ed"))[[1]]
-  expect_named(out, names(ref))
-  expect_equal(out$level, rep("landscape", 3))
-  expect_equal(out$metric, rep("forest_ed", 3))
-  expect_equal(out$rep, rep(1L, 3))
-  expect_equal(out$time, rep(0L, 3))
-  ## one 40 m edge over 0.16 ha is 250 m/ha; a polygon with only forest or only non-forest has none
-  v <- stats::setNames(out$value, out$poly)
-  expect_equal(v[["all"]], 250)
-  expect_equal(v[["left"]], 0)
-  expect_equal(v[["right"]], 0)
-  ## and it is the landscape's own edge density, as both classes share the one edge
-  expect_equal(ref$value[ref$poly == "all"], 250)
-})
-
-test_that("nrv_forest_edge_density sums every forest edge", {
-  d <- withr::local_tempdir()
-  f <- file.path(d, "rep02", "forestMap_year0100.tif")
-  dir.create(dirname(f))
-  ## one forest pixel inside non-forest (4 x 10 m of edge) and one 2-pixel forest strip on the border
+  ## one 40 m edge over 0.16 ha is 250 m/ha; a polygon with only forest has none
+  out <- nrv_metrics_landscape(polys, "Name", edge(.fnf_halves(), "rep01", 0), funList = list("lsm_c_ed"))[[1]]
+  forest <- out[out$class == 1, ]
+  expect_equal(stats::setNames(forest$value, forest$poly), c(all = 250, left = 0))
+  expect_equal(unique(forest$metric), "ed")
+  ## a pixel inside non-forest (40 m) and a strip on the border (20 m above, 10 m right; the map border
+  ## is no edge)
   age <- .fnf_age(c(10, 10, 10, 10,  10, 100, 10, 10,  10, 10, 10, 10,  100, 100, 10, 10))
-  terra::writeRaster(forest_nonforest_map(age), f, datatype = "INT1U")
-  polys <- sf::st_as_sf(data.frame(Name = "all"), geometry = sf::st_sfc(
-    sf::st_polygon(list(rbind(c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0)))), crs = "EPSG:32611"))
-  out <- nrv_forest_edge_density(f, polys, "Name")
-  ## edges inside the map: 40 m around the pixel + 20 m above the strip + 10 m right of it (the map
-  ## border is no edge)
-  expect_equal(out$value, 70 / 0.16)
-  expect_equal(c(out$rep, out$time), c(2L, 100L))
+  out <- nrv_metrics_landscape(polys[1, ], "Name", edge(age, "rep02", 100), funList = list("lsm_c_ed"))[[1]]
+  expect_equal(out$value[out$class == 1], 70 / 0.16)
+  expect_equal(c(unique(out$rep), unique(out$time)), c(2L, 100L))
 })
 
 test_that("nrv_metric_info names forest edge density", {

@@ -1,5 +1,4 @@
-## Codes of the forest / non-forest map made by forest_nonforest_map(): class 1 is the forest, whose
-## edge density nrv_forest_edge_density() reports.
+## Codes of the forest / non-forest map made by forest_nonforest_map(): class 1 is the forest.
 .forestCode <- 1L
 .nonForestCode <- 0L
 
@@ -25,7 +24,11 @@
 #'   outside the study area. Its category table labels them "Forest" and "Non-forest".
 #'
 #' @export
-#' @seealso [nrv_forest_edge_density()]
+#' @details
+#' The map is a classified raster like any other: [nrv_metrics_landscape()] with `funList = "lsm_c_ed"`
+#' gives its edge density (class `1`, the forest, in m/ha).
+#'
+#' @seealso [nrv_metrics_landscape()]
 forest_nonforest_map <- function(age, ageThreshold = 20, nonForest = NULL, studyArea = NULL) {
   if (is.character(age)) {
     age <- terra::rast(age)
@@ -61,44 +64,4 @@ forest_nonforest_map <- function(age, ageThreshold = 20, nonForest = NULL, study
     values = c("Non-forest", "Forest")
   )
   out
-}
-
-#' Forest edge density per reporting polygon
-#'
-#' The edge density of the forest class (metres of forest / non-forest edge per hectare of landscape,
-#' [landscapemetrics::lsm_c_ed()]) in each forest / non-forest map of `fnf`, within each polygon of
-#' `summaryPolys`. It is computed by [nrv_metrics_landscape()], so the result has the long format that
-#' returns, and a summary of it ([summarize_nrv()], [nrv_replicate_values()]) goes through the code of the
-#' other landscape metrics. The rows have `level = "landscape"` and `metric = "forest_ed"`.
-#'
-#' A polygon with no forest has an edge density of 0; a polygon with no cells in any map has no rows.
-#'
-#' @param fnf character, the file paths of forest / non-forest maps (see [forest_nonforest_map()]),
-#'   named as `vtm` of [nrv_metrics_landscape()]: `<rep>/<prefix>_year<YYYY>.tif`.
-#' @template summaryPolys
-#' @template polyCol
-#'
-#' @return a `data.frame` with columns `layer`, `level`, `class`, `id`, `metric`, `value`, `rep`,
-#'   `time`, `poly`, as one element of the list [nrv_metrics_landscape()] returns.
-#'
-#' @export
-#' @seealso [forest_nonforest_map()], [nrv_metrics_landscape()]
-nrv_forest_edge_density <- function(fnf, summaryPolys, polyCol) {
-  raw <- nrv_metrics_landscape(summaryPolys, polyCol, fnf, funList = list("lsm_c_ed"))[["lsm_c_ed"]]
-
-  key <- c("rep", "time", "poly")
-  forest <- raw[raw$class == .forestCode, , drop = FALSE]
-  ## a map x polygon with cells but no forest class has an edge density of 0, not no value
-  cells <- unique(raw[, key, drop = FALSE])
-  none <- cells[!do.call(paste, cells) %in% do.call(paste, forest[, key, drop = FALSE]), , drop = FALSE]
-  if (nrow(none)) {
-    forest <- rbind(forest, cbind(raw[rep(1L, nrow(none)), c("layer", "level", "class", "id", "metric")],
-                                  value = 0, none))
-  }
-
-  forest$level <- "landscape"
-  forest$class <- NA_integer_
-  forest$id <- NA_integer_
-  forest$metric <- "forest_ed"
-  forest[, names(raw), drop = FALSE]
 }
