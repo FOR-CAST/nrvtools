@@ -113,7 +113,10 @@ testthat::test_that("read_cohort_data() and write_cohort_parquet() reject bad in
   other <- file.path(tmp, "cd.rds")
   saveRDS(cd, other)
   testthat::expect_error(read_cohort_data(other), "cd.rds", fixed = TRUE)
-  testthat::expect_error(read_cohort_data(c(p, p)), "length")
+  testthat::expect_error(read_cohort_data(c(p, p)), "length 2", fixed = TRUE)
+  testthat::expect_error(read_cohort_data(c(p, p)), basename(p), fixed = TRUE)
+  testthat::expect_error(read_cohort_data(42), "42", fixed = TRUE)
+  testthat::expect_error(read_cohort_data(NA_character_), "NA", fixed = TRUE)
   testthat::expect_error(
     read_cohort_data(p, cols = c("B", "nonexistent")),
     "nonexistent",
@@ -131,4 +134,19 @@ testthat::test_that("read_cohort_data() and write_cohort_parquet() reject bad in
   testthat::expect_error(write_cohort_parquet(cd, tmp, Inf), "year")
   testthat::expect_error(write_cohort_parquet(cd, tmp, "7"), "year")
   testthat::expect_error(write_cohort_parquet(list(1), tmp, 1), "data.frame")
+})
+
+testthat::test_that("write_cohort_parquet() stops and leaves no temp file when the rename fails", {
+  root <- withr::local_tempdir()
+  dst <- file.path(root, "year=0700", "part-0.parquet")
+  ## a non-empty directory at the destination makes the rename fail
+  dir.create(file.path(dst, "blocker"), recursive = TRUE)
+
+  ## file.rename() also warns about the failure
+  testthat::expect_error(
+    suppressWarnings(write_cohort_parquet(cohort_fixture(), root, 700)),
+    "failed to publish",
+    fixed = TRUE
+  )
+  testthat::expect_length(list.files(dirname(dst), pattern = "\\.tmp$", all.files = TRUE), 0L)
 })

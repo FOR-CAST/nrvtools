@@ -60,7 +60,16 @@ write_cohort_parquet <- function(cd, root, year) {
 #' @export
 read_cohort_data <- function(x, cols = NULL) {
   if (!is.character(x) || length(x) != 1L || is.na(x)) {
-    stop("read_cohort_data(): `x` must be a single file path (length 1).", call. = FALSE)
+    shown <- paste(utils::head(format(x), 3L), collapse = ", ")
+    stop(
+      "read_cohort_data(): `x` must be a single file path (length 1), not ",
+      class(x)[1L],
+      " of length ",
+      length(x),
+      ": ",
+      substr(shown, 1L, 200L),
+      call. = FALSE
+    )
   }
   if (!file.exists(x)) {
     stop("read_cohort_data(): file not found: ", x, call. = FALSE)
@@ -89,7 +98,8 @@ read_cohort_data <- function(x, cols = NULL) {
   } else {
     stop("read_cohort_data(): `x` must be a `.parquet` or `.qs2` file: ", x, call. = FALSE)
   }
-  data.table::as.data.table(out)
+  out <- data.table::as.data.table(out)
+  data.table::setalloccol(out)
 }
 
 .checkCohortCols <- function(cols, have, x) {
