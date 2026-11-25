@@ -1,3 +1,5 @@
+# nrvtools (development version)
+
 # nrvtools 0.5.0
 
 - New `write_cohort_parquet(cd, root, year)` writes one summary year's `cohortData` to `<root>/year=<0000-padded year>/part-0.parquet` (an arrow dataset partitioned by simulation time), and new `read_cohort_data(x, cols = NULL)` reads either that or an older `.qs2` file, returning a `data.table`. `seralStageMapGeneratorBC()` and `writeSeralStageMapBC()` now accept a parquet `cd` as well as a `.qs2` one.
