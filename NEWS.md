@@ -1,3 +1,5 @@
+# nrvtools (development version)
+
 # nrvtools 0.5.1
 
 - NRV_summary's autocorrelation helpers move here: `autocorr_acf()`, `autocorr_time()`, `autocorr_lag_below()`, `autocorr_summary()` and `ess_ar1(method = "large_sample")`. They compute what the module's did, except that `autocorr_summary()` takes the snapshot times (`snapshot_times`) instead of a count. The count's default, `floor(diff(range(period)) / interval) + 1`, counted from the start of `period` rather than on the snapshot grid, and could lose a snapshot to rounding (`floor(0.3 / 0.1)` is 2). `autocorr_summary()` also gains `effectiveSnapshotsFinite`.
