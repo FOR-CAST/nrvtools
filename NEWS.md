@@ -1,4 +1,4 @@
-# nrvtools (development version)
+# nrvtools 0.4.0
 
 - `plot_nrv_envelope(type = "lines")` draws one thin grey line per replicate under a bold median line, with no ribbon. The replicates come from the new argument `reps_df` (columns `rep`, `time`, `value` and the facet columns, as from `nrv_replicate_values()`), which `type = "lines"` requires; `nrv_df` needs its `median` column. A row of `reps_df` for a unit that `nrv_df` does not plot is dropped with a message, and the current-condition line defaults to the median, as for the boxplot. `"ribbon"` and `"boxplot"` are unchanged.
 - `plot_leading_boxplot()` names the type on its x axis ("Proportion of Wh Spruce-leading forest area"; "Proportion of forest area" for `"All species"`): its proportions are of one type's forest across the age classes, not of the whole forest, which the old label said. New argument `species_col`; `xlab = NULL` is the new default.
