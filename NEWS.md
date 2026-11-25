@@ -1,5 +1,8 @@
 # nrvtools (development version)
 
+- NRV_summary's autocorrelation helpers move here: `autocorr_acf()`, `autocorr_time()`, `autocorr_lag_below()`, `autocorr_summary()` and `ess_ar1(method = "large_sample")`. They compute what the module's did, except that `autocorr_summary()` takes the snapshot times (`snapshot_times`) instead of a count. The count's default, `floor(diff(range(period)) / interval) + 1`, counted from the start of `period` rather than on the snapshot grid, and could lose a snapshot to rounding (`floor(0.3 / 0.1)` is 2). `autocorr_summary()` also gains `effectiveSnapshotsFinite`.
+- Two estimators for a few snapshots per replicate, where the module's are biased. `autocorr_snapshots()` correlates each replicate's departures from the across-replicate mean of each snapshot: on 15 replicates of 7 snapshots of an AR(1) process it averages 0.98-0.99 of the true correlation, where the pooled ACF averages 0.82-0.84 of it. `ess_ar1()` defaults to the finite-sample `n / (1 + 2 * sum((1 - k / n) * r^k))` per replicate, exact for the mean of `n` AR(1) values; the large-sample `n * (1 - r) / (1 + r)` falls below one sample per replicate once `r` exceeds `(n - 1) / (n + 1)`, 0.75 at 7 snapshots. `ess_acf()` applies the finite formula to any autocorrelation function.
+
 # nrvtools 0.5.0
 
 - New `write_cohort_parquet(cd, root, year)` writes one summary year's `cohortData` to `<root>/year=<0000-padded year>/part-0.parquet` (an arrow dataset partitioned by simulation time), and new `read_cohort_data(x, cols = NULL)` reads either that or an older `.qs2` file, returning a `data.table`. `seralStageMapGeneratorBC()` and `writeSeralStageMapBC()` now accept a parquet `cd` as well as a `.qs2` one.
