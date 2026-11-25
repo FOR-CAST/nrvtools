@@ -1,5 +1,7 @@
 # nrvtools (development version)
 
+- `forest_nonforest_map()` (new) classifies each pixel of a `pixelGroupMap` as forest or non-forest: non-forest if its biomass-weighted stand age is below `ageThreshold` (default 20 years), it has no cohorts, or it is marked in an optional `nonForest` mask; everything else in the study area is forest. `nrv_forest_edge_density()` (new) returns the edge density of the forest (m/ha, `landscapemetrics::lsm_c_ed()`) of such maps within each reporting polygon, in the long format of `nrv_metrics_landscape()` (`metric = "forest_ed"`, `level = "landscape"`), so `summarize_nrv()` and the plotting functions take it unchanged. `nrv_metric_info()` names it "Forest edge density (m/ha)".
+
 # nrvtools 0.5.0
 
 - New `write_cohort_parquet(cd, root, year)` writes one summary year's `cohortData` to `<root>/year=<0000-padded year>/part-0.parquet` (an arrow dataset partitioned by simulation time), and new `read_cohort_data(x, cols = NULL)` reads either that or an older `.qs2` file, returning a `data.table`. `seralStageMapGeneratorBC()` and `writeSeralStageMapBC()` now accept a parquet `cd` as well as a `.qs2` one.

@@ -41,7 +41,8 @@
     .metric_row("class", "area_ha_below_floor", "Area of patches below the minimum size", "ha"),
     .metric_row("class", "interior_area_ha", "Interior forest area", "ha"),
     .metric_row("class", "interior_prop", "Interior forest, proportion of class area"),
-    .metric_row("landscape", "leadingProp", "Proportion of forest area")
+    .metric_row("landscape", "leadingProp", "Proportion of forest area"),
+    .metric_row("landscape", "forest_ed", "Forest edge density", "m/ha") ## nrv_forest_edge_density()
   )
 }
 
