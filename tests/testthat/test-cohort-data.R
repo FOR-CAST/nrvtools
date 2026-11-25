@@ -119,6 +119,17 @@ testthat::test_that("read_cohort_data() and write_cohort_parquet() reject bad in
   testthat::expect_error(read_cohort_data(42), "42", fixed = TRUE)
   testthat::expect_error(read_cohort_data(NA_character_), "NA", fixed = TRUE)
   testthat::expect_error(
+    read_cohort_data(list(a = 1, b = "x")),
+    "list of length 2: <list>",
+    fixed = TRUE
+  )
+  testthat::expect_error(
+    read_cohort_data(data.frame(a = 1:2)),
+    "data.frame of length 1: <data.frame>",
+    fixed = TRUE
+  )
+  testthat::expect_error(read_cohort_data(c(1, 100)), "numeric of length 2: 1, 100", fixed = TRUE)
+  testthat::expect_error(
     read_cohort_data(p, cols = c("B", "nonexistent")),
     "nonexistent",
     fixed = TRUE

@@ -60,7 +60,11 @@ write_cohort_parquet <- function(cd, root, year) {
 #' @export
 read_cohort_data <- function(x, cols = NULL) {
   if (!is.character(x) || length(x) != 1L || is.na(x)) {
-    shown <- paste(utils::head(format(x), 3L), collapse = ", ")
+    shown <- if (is.atomic(x)) {
+      paste(utils::head(as.character(x), 3L), collapse = ", ")
+    } else {
+      paste0("<", class(x)[1L], ">")
+    }
     stop(
       "read_cohort_data(): `x` must be a single file path (length 1), not ",
       class(x)[1L],
