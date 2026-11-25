@@ -1,6 +1,6 @@
 # nrvtools (development version)
 
-- `forest_nonforest_map()` (new) classifies each pixel of a `pixelGroupMap` as forest or non-forest: non-forest if its biomass-weighted stand age is below `ageThreshold` (default 20 years), it has no cohorts, or it is marked in an optional `nonForest` mask; everything else in the study area is forest. `nrv_forest_edge_density()` (new) returns the edge density of the forest (m/ha, `landscapemetrics::lsm_c_ed()`) of such maps within each reporting polygon, in the long format of `nrv_metrics_landscape()` (`metric = "forest_ed"`, `level = "landscape"`), so `summarize_nrv()` and the plotting functions take it unchanged. `nrv_metric_info()` names it "Forest edge density (m/ha)".
+- `forest_nonforest_map()` (new) classifies each pixel of a stand-age map (such as `LandR::standAgeMapGenerator()`'s) as forest or non-forest: non-forest if its age is below `ageThreshold` (default 20 years), it has no age inside the optional `studyArea`, or it is marked in an optional `nonForest` mask; everything else in the study area is forest. `nrv_forest_edge_density()` (new) returns the edge density of the forest (m/ha, `landscapemetrics::lsm_c_ed()`) of such maps within each reporting polygon, in the long format of `nrv_metrics_landscape()` (`metric = "forest_ed"`, `level = "landscape"`), so `summarize_nrv()` and the plotting functions take it unchanged. `nrv_metric_info()` names it "Forest edge density (m/ha)".
 
 # nrvtools 0.5.0
 

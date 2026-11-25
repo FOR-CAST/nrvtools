@@ -2,45 +2,40 @@
 % Please edit documentation in R/forest-edge.R
 \name{forest_nonforest_map}
 \alias{forest_nonforest_map}
-\title{Forest / non-forest map from cohort data}
+\title{Forest / non-forest map from a stand-age map}
 \usage{
 forest_nonforest_map(
-  cd,
-  pgm,
+  age,
   ageThreshold = 20,
   nonForest = NULL,
   studyArea = NULL
 )
 }
 \arguments{
-\item{cd}{A \code{cohortData} table (columns \code{pixelGroup}, \code{age}, \code{B}), or the path of a \code{.parquet} or
-\code{.qs2} file that \code{\link[=read_cohort_data]{read_cohort_data()}} reads.}
-
-\item{pgm}{A \code{pixelGroupMap} \code{SpatRaster}, or the path of one.}
+\item{age}{A stand-age \code{SpatRaster} (years), or the path of one. \code{NA} is a pixel without cohorts, or
+outside the study area.}
 
 \item{ageThreshold}{Stands younger than this (years) are non-forest. Default 20.}
 
-\item{nonForest}{Optional \code{SpatRaster} (or path) on the grid of \code{pgm}: cells that are not \code{NA} and
+\item{nonForest}{Optional \code{SpatRaster} (or path) on the grid of \code{age}: cells that are not \code{NA} and
 not \code{0} are non-forest, e.g. a non-forest land-cover mask.}
 
-\item{studyArea}{Optional polygons (\code{SpatVector}, \code{sf}) of the study area. Cells of \code{pgm} outside it
-are \code{NA}; cells inside it that \code{pgm} has as \code{NA} are non-forest. Without it, \code{NA} in \code{pgm} marks
-the outside.}
+\item{studyArea}{Optional polygons (\code{SpatVector}, \code{sf}) of the study area. Cells of \code{age} outside it
+are \code{NA}; cells inside it that \code{age} has as \code{NA} are non-forest. Without it, every \code{NA} in \code{age} is
+taken to be outside the study area, so a pixel without cohorts is \code{NA}, not non-forest.}
 }
 \value{
-A \code{SpatRaster} on the grid of \code{pgm}, named \code{forest}: \code{1} forest, \code{0} non-forest, \code{NA}
+A \code{SpatRaster} on the grid of \code{age}, named \code{forest}: \code{1} forest, \code{0} non-forest, \code{NA}
 outside the study area. Its category table labels them "Forest" and "Non-forest".
 }
 \description{
-Classifies each pixel of a pixel group map as forest or non-forest. A pixel is \strong{non-forest} if its
-biomass-weighted stand age (\code{sum(age * B) / sum(B)} over the cohorts of its pixel group) is below
-\code{ageThreshold}, or it has no cohorts (a pixel group that is \code{0} or absent from \code{cd}), or it is
-non-forest in \code{nonForest}. Every other pixel is \strong{forest}. Pixels outside the study area are \code{NA}:
-those that are \code{NA} in \code{pgm}, or, when \code{studyArea} is given, those outside it.
+Classifies each pixel of a stand-age map as forest or non-forest. A pixel is \strong{non-forest} if its
+stand age is below \code{ageThreshold}, or it has no age (no cohorts) inside the study area, or it is
+non-forest in \code{nonForest}. Every other pixel is \strong{forest}. Pixels outside the study area are \code{NA}.
 }
 \details{
-The age is that of \code{LandR::standAgeMapGenerator(weight = "biomass")}, not floored to the decade
-(the two classify alike at a threshold that is a multiple of 10, such as the default 20).
+nrvtools does not compute stand age. Pass the map the simulation's own stand-age output uses, such as
+\code{LandR::standAgeMapGenerator()} (biomass-weighted age of the cohorts of each pixel).
 }
 \seealso{
 \code{\link[=nrv_forest_edge_density]{nrv_forest_edge_density()}}

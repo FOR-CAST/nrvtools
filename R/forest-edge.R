@@ -1,58 +1,38 @@
-utils::globalVariables(c("age", "B", "forest"))
-
 ## Codes of the forest / non-forest map made by forest_nonforest_map(): class 1 is the forest, whose
 ## edge density nrv_forest_edge_density() reports.
 .forestCode <- 1L
 .nonForestCode <- 0L
 
-#' Forest / non-forest map from cohort data
+#' Forest / non-forest map from a stand-age map
 #'
-#' Classifies each pixel of a pixel group map as forest or non-forest. A pixel is **non-forest** if its
-#' biomass-weighted stand age (`sum(age * B) / sum(B)` over the cohorts of its pixel group) is below
-#' `ageThreshold`, or it has no cohorts (a pixel group that is `0` or absent from `cd`), or it is
-#' non-forest in `nonForest`. Every other pixel is **forest**. Pixels outside the study area are `NA`:
-#' those that are `NA` in `pgm`, or, when `studyArea` is given, those outside it.
+#' Classifies each pixel of a stand-age map as forest or non-forest. A pixel is **non-forest** if its
+#' stand age is below `ageThreshold`, or it has no age (no cohorts) inside the study area, or it is
+#' non-forest in `nonForest`. Every other pixel is **forest**. Pixels outside the study area are `NA`.
 #'
-#' The age is that of `LandR::standAgeMapGenerator(weight = "biomass")`, not floored to the decade
-#' (the two classify alike at a threshold that is a multiple of 10, such as the default 20).
+#' nrvtools does not compute stand age. Pass the map the simulation's own stand-age output uses, such as
+#' `LandR::standAgeMapGenerator()` (biomass-weighted age of the cohorts of each pixel).
 #'
-#' @param cd A `cohortData` table (columns `pixelGroup`, `age`, `B`), or the path of a `.parquet` or
-#'   `.qs2` file that [read_cohort_data()] reads.
-#' @param pgm A `pixelGroupMap` `SpatRaster`, or the path of one.
+#' @param age A stand-age `SpatRaster` (years), or the path of one. `NA` is a pixel without cohorts, or
+#'   outside the study area.
 #' @param ageThreshold Stands younger than this (years) are non-forest. Default 20.
-#' @param nonForest Optional `SpatRaster` (or path) on the grid of `pgm`: cells that are not `NA` and
+#' @param nonForest Optional `SpatRaster` (or path) on the grid of `age`: cells that are not `NA` and
 #'   not `0` are non-forest, e.g. a non-forest land-cover mask.
-#' @param studyArea Optional polygons (`SpatVector`, `sf`) of the study area. Cells of `pgm` outside it
-#'   are `NA`; cells inside it that `pgm` has as `NA` are non-forest. Without it, `NA` in `pgm` marks
-#'   the outside.
+#' @param studyArea Optional polygons (`SpatVector`, `sf`) of the study area. Cells of `age` outside it
+#'   are `NA`; cells inside it that `age` has as `NA` are non-forest. Without it, every `NA` in `age` is
+#'   taken to be outside the study area, so a pixel without cohorts is `NA`, not non-forest.
 #'
-#' @return A `SpatRaster` on the grid of `pgm`, named `forest`: `1` forest, `0` non-forest, `NA`
+#' @return A `SpatRaster` on the grid of `age`, named `forest`: `1` forest, `0` non-forest, `NA`
 #'   outside the study area. Its category table labels them "Forest" and "Non-forest".
 #'
 #' @export
 #' @seealso [nrv_forest_edge_density()]
-forest_nonforest_map <- function(cd, pgm, ageThreshold = 20, nonForest = NULL, studyArea = NULL) {
-  if (is.character(cd)) {
-    cd <- read_cohort_data(cd, cols = c("pixelGroup", "age", "B"))
+forest_nonforest_map <- function(age, ageThreshold = 20, nonForest = NULL, studyArea = NULL) {
+  if (is.character(age)) {
+    age <- terra::rast(age)
   }
-  if (is.character(pgm)) {
-    pgm <- terra::rast(pgm)
-  }
-  stopifnot(inherits(pgm, "SpatRaster"), is.numeric(ageThreshold), length(ageThreshold) == 1L)
+  stopifnot(inherits(age, "SpatRaster"), is.numeric(ageThreshold), length(ageThreshold) == 1L)
 
-  ## biomass-weighted stand age per pixel group (the formula of LandR::standAgeMapGenerator())
-  cd <- data.table::as.data.table(cd)
-  byGroup <- cd[,
-    list(forest = as.integer(sum(age * B) / sum(B) >= ageThreshold)),
-    by = "pixelGroup"
-  ]
-  ## a group with no biomass has no weighted age: no cohorts to be forest with
-  byGroup[is.na(forest), forest := .nonForestCode]
-
-  ## cells that have a pixel group are looked up; the rest (0, or absent from `cd`) are non-forest
-  key <- .pixelGroupKeys(pgm, byGroup$pixelGroup)
-  v <- byGroup$forest[match(key, byGroup$pixelGroup)]
-  v[is.na(v) & !is.na(key)] <- .nonForestCode
+  v <- as.integer(terra::values(age, mat = FALSE) >= ageThreshold)
 
   if (!is.null(nonForest)) {
     if (is.character(nonForest)) {
@@ -63,7 +43,7 @@ forest_nonforest_map <- function(cd, pgm, ageThreshold = 20, nonForest = NULL, s
     v[!is.na(nf) & nf != 0 & !is.na(v)] <- .nonForestCode
   }
 
-  out <- terra::rast(pgm, nlyrs = 1L, names = "forest", vals = v)
+  out <- terra::rast(age, nlyrs = 1L, names = "forest", vals = v)
   if (!is.null(studyArea)) {
     if (!inherits(studyArea, "SpatVector")) {
       studyArea <- terra::vect(studyArea)
