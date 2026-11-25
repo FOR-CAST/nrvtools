@@ -541,7 +541,8 @@ new_replicates <- function(polys = c("A", "B")) {
   d$class <- NA
   d$level <- "landscape"
   d$metric <- "ed"
-  d$value <- 9 + as.integer(factor(d$rep)) + (d$time - 700) / 100
+  ## subregions differ, so a replicate line drawn in the wrong panel shows
+  d$value <- 9 + as.integer(factor(d$rep)) + (d$time - 700) / 100 + 100 * (as.integer(d$poly) - 1)
   d
 }
 
@@ -571,6 +572,8 @@ test_that("plot_nrv_envelope(type = 'lines') draws a line per replicate and the 
   expect_equal(length(unique(reps$group[reps$PANEL == 2])), 3L)
   expect_equal(nrow(reps), 12L)
   expect_equal(med$y, new_envelope()$median)
+  expect_equal(range(reps$y[reps$PANEL == 1]), c(10, 13))
+  expect_equal(range(reps$y[reps$PANEL == 2]), c(110, 113))
   expect_gt(med$linewidth[1], reps$linewidth[1])
 })
 
@@ -581,4 +584,56 @@ test_that("plot_nrv_envelope keeps its ribbon layers and data", {
   expect_equal(ggplot2::layer_data(p, 1)$ymax, rep(13, 4))
   expect_equal(ggplot2::layer_data(p, 2)$y, c(10, 11, 10, 11))
   expect_equal(levels(p$data$.panel), c("A", "B"))
+})
+
+test_that("plot_nrv_envelope(type = 'lines') names missing columns", {
+  reps <- new_replicates()
+  expect_error(
+    plot_nrv_envelope(
+      new_envelope(),
+      type = "lines",
+      reps_df = reps[, setdiff(names(reps), "poly")]
+    ),
+    "poly"
+  )
+  expect_error(
+    plot_nrv_envelope(
+      new_envelope(),
+      type = "lines",
+      reps_df = reps[, setdiff(names(reps), "rep")]
+    ),
+    "rep"
+  )
+  expect_error(
+    plot_nrv_envelope(new_envelope()[, c("time", "poly", "mean")], type = "lines", reps_df = reps),
+    "median"
+  )
+})
+
+test_that("plot_nrv_envelope(type = 'lines') drops replicate units the envelope lacks", {
+  reps <- rbind(new_replicates(), new_replicates("C"))
+  expect_message(p <- plot_nrv_envelope(new_envelope(), type = "lines", reps_df = reps), "6 .*C")
+  d <- ggplot2::layer_data(p, 1)
+  expect_false(anyNA(d$PANEL))
+  expect_equal(nrow(d), 12L)
+  expect_equal(nlevels(ggplot2::ggplot_build(p)$layout$layout$PANEL), 2L)
+})
+
+test_that("plot_nrv_envelope(type = 'lines') reads the current condition against the median", {
+  p <- plot_nrv_envelope(
+    new_envelope(),
+    type = "lines",
+    reps_df = new_replicates(),
+    cc = new_cc_envelope()
+  )
+  expect_equal(sort(geom_data(p, "GeomHline")$.cc), c(14, 24))
+})
+
+test_that("plot_nrv_envelope ignores reps_df unless type is lines", {
+  for (type in c("ribbon", "boxplot")) {
+    a <- plot_nrv_envelope(new_envelope(), type = type)
+    b <- plot_nrv_envelope(new_envelope(), type = type, reps_df = new_replicates())
+    expect_equal(layer_classes(b), layer_classes(a))
+    expect_equal(ggplot2::layer_data(b, 1), ggplot2::layer_data(a, 1))
+  }
 })

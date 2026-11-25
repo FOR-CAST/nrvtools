@@ -74,7 +74,8 @@ draws none.}
 \item{cc_col}{Column of \code{cc} holding the current-condition value. \code{NULL}
 (default) compares like with like: \code{"mean"} (the ribbon's line) for
 \code{type = "ribbon"}, falling back to \code{"value"}; \code{"median"} (the box's middle
-line) for \code{type = "boxplot"}, falling back to \code{"value"}, then \code{"mean"}.}
+line, or the bold line) for \code{type = "boxplot"} and \code{"lines"}, falling back
+to \code{"value"}, then \code{"mean"}.}
 
 \item{cc_label}{Legend label for the current-condition line.}
 

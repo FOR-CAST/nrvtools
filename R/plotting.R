@@ -670,7 +670,8 @@ plot_by_class <- function(
 #' @param cc_col Column of `cc` holding the current-condition value. `NULL`
 #'   (default) compares like with like: `"mean"` (the ribbon's line) for
 #'   `type = "ribbon"`, falling back to `"value"`; `"median"` (the box's middle
-#'   line) for `type = "boxplot"`, falling back to `"value"`, then `"mean"`.
+#'   line, or the bold line) for `type = "boxplot"` and `"lines"`, falling back
+#'   to `"value"`, then `"mean"`.
 #' @param cc_label Legend label for the current-condition line.
 #' @param xlab X-axis label (default `"time"`).
 #' @param caption Optional caption below the figure, e.g. what the band or
@@ -756,11 +757,36 @@ plot_nrv_envelope <- function(
         call. = FALSE
       )
     }
-    ## the replicates carry the same panel label as the envelope, built from the same columns
-    reps_df[[".panel"]] <- if (length(facet)) {
-      factor(as.character(.panel_factor(reps_df, facet)), levels = levels(nrv_df[[".panel"]]))
+    missFacet <- setdiff(facet, names(reps_df))
+    if (length(missFacet)) {
+      stop(
+        "plot_nrv_envelope(type = \"lines\") needs `reps_df` column(s): ",
+        paste(missFacet, collapse = ", "),
+        " (the facet columns of `nrv_df`)",
+        call. = FALSE
+      )
+    }
+    ## the replicates carry the same panel label as the envelope, built from the same columns;
+    ## units the envelope does not plot have no panel, so their rows are dropped
+    if (length(facet)) {
+      lab <- factor(
+        as.character(.panel_factor(reps_df, facet)),
+        levels = levels(nrv_df[[".panel"]])
+      )
+      if (anyNA(lab)) {
+        gone <- unique(do.call(paste, c(reps_df[is.na(lab), facet, drop = FALSE], sep = " | ")))
+        message(
+          "plot_nrv_envelope(type = \"lines\"): dropped ",
+          sum(is.na(lab)),
+          " `reps_df` row(s) for unit(s) not in `nrv_df`: ",
+          paste(gone, collapse = "; ")
+        )
+        reps_df <- reps_df[!is.na(lab), , drop = FALSE]
+        lab <- lab[!is.na(lab)]
+      }
+      reps_df[[".panel"]] <- lab
     } else {
-      "all"
+      reps_df[[".panel"]] <- "all"
     }
     gg <- ggplot2::ggplot(nrv_df, ggplot2::aes(x = .data[["time"]])) +
       ggplot2::geom_line(
@@ -788,7 +814,7 @@ plot_nrv_envelope <- function(
       cc_col = .cc_value_col(
         cc,
         cc_col,
-        if (type == "boxplot") c("median", "value", "mean") else c("mean", "value")
+        if (type == "ribbon") c("mean", "value") else c("median", "value", "mean")
       )
     )
   }
