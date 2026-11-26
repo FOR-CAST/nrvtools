@@ -13,6 +13,6 @@ Designed for use with the [NRV_summary](https://github.com/FOR-CAST/NRV_summary)
 You can install `nrvtools` from GitHub using:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("FOR-CAST/nrvtools")
+# install.packages("pak")
+pak::pak("FOR-CAST/nrvtools")
 ```
