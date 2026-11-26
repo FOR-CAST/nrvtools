@@ -304,6 +304,7 @@ patchStats <- function(vtm, sam, flm, polyNames, summaryPolys, polyCol, funList)
 
     vc <- terra::crop(v, subpoly)
     vcm <- terra::mask(vc, subpoly)
+    vcm <- terra::mask(vcm, fc, maskvalues = 0) ## also mask non-flammable pixels
 
     ## skip empty subregions (no forested pixels after crop/mask): every metric would either error
     ## (landscapemetrics::get_patches / lsm_* on an all-NA raster -> "attempt to select less than one

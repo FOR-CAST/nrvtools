@@ -233,3 +233,71 @@ testthat::test_that(".rat_value_col() finds the value column across RAT naming c
   ## fall back to the first column when neither "id" nor "value" is present
   testthat::expect_equal(.rat_value_col(data.frame(foo = 1:2, bar = c("a", "b"))), 1L)
 })
+
+.write_patchstats_inputs <- function(dir, vtm, flm) {
+  sam <- .create_mock_sam()
+  flm_r <- terra::rast(flm, crs = "EPSG:3857")
+  terra::ext(flm_r) <- terra::ext(vtm)
+  files <- list(
+    vtm = file.path(dir, "vegTypeMap_year0.tif"),
+    sam = file.path(dir, "standAgeMap_year0.tif"),
+    flm = file.path(dir, "flam.tif")
+  )
+  terra::writeRaster(vtm, files$vtm)
+  terra::writeRaster(sam, files$sam)
+  terra::writeRaster(flm_r, files$flm)
+  poly <- terra::as.polygons(terra::ext(vtm), crs = terra::crs(vtm))
+  poly$Name <- "Z1"
+  c(files, list(poly = poly))
+}
+
+testthat::test_that("patchStats masks non-flammable pixels in the vegetation-type map", {
+  dir <- withr::local_tempdir()
+  vtm <- .create_mock_vtm()
+  ## the first row (3 "forest", 2 "grass" pixels) is non-flammable
+  flm <- matrix(1, nrow = 5, ncol = 5)
+  flm[1, ] <- 0
+  x <- .write_patchstats_inputs(dir, vtm, flm)
+
+  res <- suppressMessages(patchStats(
+    x$vtm,
+    x$sam,
+    x$flm,
+    "Z1",
+    x$poly,
+    "Name",
+    c("lsm_c_ca", "patchAreas")
+  ))[[1L]]
+
+  cell_ha <- prod(terra::res(vtm)) * 1e-4
+  ca <- res[["lsm_c_ca"]]
+  testthat::expect_equal(ca$value[ca$class == "forest"], 5 * cell_ha)
+  testthat::expect_equal(ca$value[ca$class == "grass"], 6 * cell_ha)
+  pa <- res[["patchAreas"]]
+  testthat::expect_equal(sum(pa$value[pa$class == "forest"]), 5 * cell_ha)
+})
+
+testthat::test_that("patchStats guards a subregion whose typed pixels are all non-flammable", {
+  dir <- withr::local_tempdir()
+  m <- matrix(NA_real_, nrow = 5, ncol = 5)
+  m[1, 1:3] <- 1 ## the only typed pixels
+  vtm <- terra::rast(m, crs = "EPSG:3857")
+  levels(vtm) <- data.frame(ID = 1L, values = "forest")
+  flm <- matrix(1, nrow = 5, ncol = 5)
+  flm[1, 1:3] <- 0 ## ... and they are non-flammable
+  x <- .write_patchstats_inputs(dir, vtm, flm)
+
+  res <- suppressMessages(patchStats(
+    x$vtm,
+    x$sam,
+    x$flm,
+    "Z1",
+    x$poly,
+    "Name",
+    c("lsm_c_ca", "patchAreas")
+  ))[[1L]]
+
+  testthat::expect_named(res, c("lsm_c_ca", "patchAreas"))
+  testthat::expect_equal(nrow(res[["lsm_c_ca"]]), 0L)
+  testthat::expect_equal(nrow(res[["patchAreas"]]), 0L)
+})

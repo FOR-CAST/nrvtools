@@ -1,5 +1,6 @@
 # nrvtools (development version)
 
+- `patchStats()` masks non-flammable pixels in the vegetation-type map as well as the stand-age map, as `patchStatsSeral()` does, so patch areas and class metrics no longer count non-flammable pixels that carry a type. LandWeb's outputs do not change, because non-flammable pixels there carry no vegetation type.
 - `read_cohort_data()`'s error for a bad `x` shows an atomic value with `as.character()` (no padding to a common width, so `c(1, 100)` reads `1, 100`) and a list or data.frame as `<list>` or `<data.frame>`, not the output of `format()`.
 
 # nrvtools 0.5.1
