@@ -1,3 +1,5 @@
+# nrvtools (development version)
+
 # nrvtools 0.5.2
 
 - `patchStats()` masks non-flammable pixels in the vegetation-type map as well as the stand-age map, as `patchStatsSeral()` does, so patch areas and class metrics no longer count non-flammable pixels that carry a type. LandWeb's outputs do not change, because non-flammable pixels there carry no vegetation type.
