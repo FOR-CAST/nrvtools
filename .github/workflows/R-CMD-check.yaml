@@ -56,13 +56,7 @@ jobs:
           cache-version: ${{ steps.spatial.outputs.abi && format('1-{0}', steps.spatial.outputs.abi) || '1' }}
           extra-packages: |
             any::rcmdcheck
-            NLMR=?ignore
           needs: check
-
-      - name: Install additional package dependencies
-        run: |
-          pak::pkg_install("ropensci/NLMR")
-        shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
         with:
